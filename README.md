@@ -120,7 +120,7 @@ npm run android:clean
 yarn android:clean
 ```
 
-**Note**: The project includes a pre-configured release keystore for signing. For production apps, you should generate your own keystore and never commit it to version control.
+**⚠️ Security Warning**: The project includes a pre-configured release keystore for **development/demo purposes only**. For production apps, you MUST generate your own secure keystore and NEVER commit it to version control. See [SECURITY_NOTE.md](SECURITY_NOTE.md) for complete security guidelines.
 
 For detailed build instructions and troubleshooting, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
 

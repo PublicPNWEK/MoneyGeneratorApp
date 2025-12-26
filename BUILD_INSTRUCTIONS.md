@@ -64,6 +64,8 @@ npm run android:clean
 
 ## Signing Configuration
 
+⚠️ **SECURITY WARNING**: This project includes a release keystore in version control for **development/demo purposes only**. For production applications, you MUST generate your own secure keystore and NEVER commit it to version control. See [SECURITY_NOTE.md](SECURITY_NOTE.md) for detailed security best practices.
+
 The app is configured with two signing configurations:
 
 ### Debug Signing
@@ -78,10 +80,7 @@ The app is configured with two signing configurations:
 - **Key Alias**: `money-generator-alias`
 - **Key Password**: `android`
 
-**⚠️ Security Note**: For production applications, you should:
-1. Generate your own release keystore with a strong password
-2. Store the keystore and passwords securely (never commit to version control)
-3. Use environment variables or a secure key management system for passwords
+For production applications, see [SECURITY_NOTE.md](SECURITY_NOTE.md) for critical security best practices and how to properly secure your release keystore.
 
 ## Build from Android Studio
 
