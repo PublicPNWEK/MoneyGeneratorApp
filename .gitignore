@@ -33,6 +33,7 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
+!money-generator-release.keystore
 .kotlin/
 
 # node.js
