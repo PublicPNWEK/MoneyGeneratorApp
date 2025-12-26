@@ -122,6 +122,8 @@ yarn android:clean
 
 **Note**: The project includes a pre-configured release keystore for signing. For production apps, you should generate your own keystore and never commit it to version control.
 
+For detailed build instructions and troubleshooting, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+
 # Troubleshooting
 
 If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
