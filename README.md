@@ -82,6 +82,48 @@ You've successfully run and modified your React Native App. :partying_face:
 - If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
 - If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
 
+## Building for Production
+
+### Android Release Build
+
+To build a release APK for Android:
+
+```sh
+# Using npm
+npm run android:build
+
+# OR using Yarn
+yarn android:build
+```
+
+The APK will be located at: `android/app/build/outputs/apk/release/app-release.apk`
+
+To build an Android App Bundle (AAB) for Google Play Store:
+
+```sh
+# Using npm
+npm run android:bundle
+
+# OR using Yarn
+yarn android:bundle
+```
+
+The AAB will be located at: `android/app/build/outputs/bundle/release/app-release.aab`
+
+To clean the Android build:
+
+```sh
+# Using npm
+npm run android:clean
+
+# OR using Yarn
+yarn android:clean
+```
+
+**⚠️ Security Warning**: The project includes a pre-configured release keystore for **development/demo purposes only**. For production apps, you MUST generate your own secure keystore and NEVER commit it to version control. See [SECURITY_NOTE.md](SECURITY_NOTE.md) for complete security guidelines.
+
+For detailed build instructions and troubleshooting, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+
 # Troubleshooting
 
 If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
