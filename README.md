@@ -1,139 +1,178 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Money Generator App - Kotlin Multiplatform
 
-# Getting Started
+This application has been converted to **Kotlin Multiplatform** with **Compose Multiplatform** for native Android and iOS builds.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## What Changed
 
-## Step 1: Start Metro
+This project was migrated from **React Native** (TypeScript/JavaScript) to **Kotlin Native** (pure Kotlin multiplatform). Key changes include:
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+### Before (React Native)
+- **UI Framework**: React Native with TypeScript
+- **Build**: Metro bundler + React Native CLI
+- **Runtime**: JavaScript bridge to native modules
+- **Platform Support**: Android & iOS via React Native
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### After (Kotlin Native)
+- **UI Framework**: Compose Multiplatform (Kotlin)
+- **Build**: Gradle with Kotlin Native compiler
+- **Runtime**: Compiled to native machine code (no bridge)
+- **Platform Support**: Android & iOS via Kotlin Native
 
-```sh
-# Using npm
-npm start
+## Architecture
 
-# OR using Yarn
-yarn start
+The project uses a Kotlin Multiplatform structure:
+
+```
+MoneyGeneratorApp/
+├── composeApp/              # Shared library module
+│   ├── src/
+│   │   ├── commonMain/      # Shared UI and business logic
+│   │   ├── androidMain/     # Android-specific code
+│   │   └── iosMain/         # iOS-specific code
+│   └── build.gradle.kts
+│
+├── androidApp/              # Android application module
+│   └── build.gradle.kts
+│
+├── build.gradle.kts         # Root build configuration
+└── settings.gradle.kts      # Project modules
 ```
 
-## Step 2: Build and run your app
+## Prerequisites
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+- **JDK 17** or higher
+- **Kotlin 2.1.20**
+- **Android SDK** with:
+  - Compile SDK: 36
+  - Min SDK: 24
+  - Target SDK: 36
+  - Build Tools: 36.0.0
+- **Gradle 9.0.0** (via wrapper)
+
+For iOS builds (macOS only):
+- **Xcode 15.0+**
+- **CocoaPods**
+
+## Building the Application
 
 ### Android
 
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+#### Debug Build
+```bash
+./gradlew :androidApp:assembleDebug
 ```
 
-### iOS
+Output: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+#### Release Build
+```bash
+./gradlew :androidApp:assembleRelease
 ```
 
-Then, and every time you update your native dependencies, run:
+Output: `androidApp/build/outputs/apk/release/androidApp-release.apk`
 
-```sh
-bundle exec pod install
+#### Install to Device/Emulator
+```bash
+./gradlew :androidApp:installDebug
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### iOS (macOS only)
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+#### Build Framework
+```bash
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-## Building for Production
-
-### Android Release Build
-
-To build a release APK for Android:
-
-```sh
-# Using npm
-npm run android:build
-
-# OR using Yarn
-yarn android:build
+For physical devices:
+```bash
+./gradlew :composeApp:linkReleaseFrameworkIosArm64
 ```
 
-The APK will be located at: `android/app/build/outputs/apk/release/app-release.apk`
+## Technology Stack
 
-To build an Android App Bundle (AAB) for Google Play Store:
+- **Kotlin 2.1.20**: Programming language for all platforms
+- **Compose Multiplatform 1.8.1**: Cross-platform UI framework
+- **Material 3**: Modern design system
+- **Kotlin Native**: Native compilation for iOS
+- **Android Gradle Plugin 8.5.2**: Build system
 
-```sh
-# Using npm
-npm run android:bundle
+## Key Features
 
-# OR using Yarn
-yarn android:bundle
+- **Single Codebase**: Shared UI and business logic across platforms
+- **Native Performance**: Compiled to machine code (no JavaScript bridge)
+- **Modern UI**: Compose Multiplatform with Material 3
+- **Type Safety**: Full Kotlin type system across all code
+
+## Application Features
+
+The Money Generator app provides:
+
+- **Job Boards**: Categorized job listings (Local Missions, Digital Services, Shift-Based Ops)
+- **Smart Workflows**: Delivery Mode, Freelance Mode, Support Mode
+- **Financial Stack**: Liquidity, Benefits, Expense Intelligence
+- **Integration Hub**: Unified API Gateway and White-Label Marketplace
+- **Master Key Architecture**: Secure routing and billing
+- **Monetization Engine**: Subscriptions, cost-plus billing, commissions
+- **Compliance**: Enterprise-grade security and audit trails
+- **Roadmap**: MVP → Scale → Enterprise phases
+
+## Development
+
+### Clean Build
+```bash
+./gradlew clean
 ```
 
-The AAB will be located at: `android/app/build/outputs/bundle/release/app-release.aab`
-
-To clean the Android build:
-
-```sh
-# Using npm
-npm run android:clean
-
-# OR using Yarn
-yarn android:clean
+### Build All Modules
+```bash
+./gradlew build
 ```
 
-**⚠️ Security Warning**: The project includes a pre-configured release keystore for **development/demo purposes only**. For production apps, you MUST generate your own secure keystore and NEVER commit it to version control. See [SECURITY_NOTE.md](SECURITY_NOTE.md) for complete security guidelines.
+### List Available Tasks
+```bash
+./gradlew tasks
+```
 
-For detailed build instructions and troubleshooting, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md).
+## Migration Notes
 
-# Troubleshooting
+The TypeScript/React UI has been fully ported to Kotlin Compose:
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+- **React Components** → **@Composable functions**
+- **StyleSheet** → **Modifier chains**
+- **useState/useEffect** → **remember/LaunchedEffect**
+- **Props** → **Function parameters**
+- **Type definitions** → **data classes**
 
-# Learn More
+All business logic, data models, and UI styling have been preserved in the conversion.
 
-To learn more about React Native, take a look at the following resources:
+## Troubleshooting
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+### Gradle Sync Failures
+```bash
+./gradlew --stop
+rm -rf ~/.gradle/caches/
+./gradlew build --refresh-dependencies
+```
+
+### Android SDK Issues
+Ensure correct SDK versions in Android Studio:
+- SDK Platform 36
+- Build Tools 36.0.0
+
+### Network/Repository Issues
+If Maven repositories are unavailable:
+```bash
+./gradlew build --offline
+```
+
+## Additional Documentation
+
+See [README_KOTLIN_NATIVE.md](README_KOTLIN_NATIVE.md) for detailed Kotlin Native build instructions.
+
+See [README_REACT_NATIVE.md.backup](README_REACT_NATIVE.md.backup) for the original React Native documentation (deprecated).
+
+See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) for the original React Native build documentation (deprecated).
+
+## License
+
+See LICENSE file for details.
