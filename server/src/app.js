@@ -3,8 +3,15 @@ import bodyParser from 'body-parser';
 import { IntegrationService } from './integrationService.js';
 import { Models } from './models.js';
 import { requestLogger } from './logger.js';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
+
+const paypalWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // limit each IP to 60 requests per windowMs for this endpoint
+});
+
 app.use(bodyParser.json({ verify: rawBodySaver }));
 app.use(requestLogger);
 
@@ -35,7 +42,7 @@ app.post('/integrations/plaid/exchange', (req, res) => {
   res.json({ item_id: itemId });
 });
 
-app.post('/webhooks/paypal', (req, res) => {
+app.post('/webhooks/paypal', paypalWebhookLimiter, (req, res) => {
   try {
     const signature = req.header('x-paypal-signature') || '';
     const rawBody = req.rawBody || JSON.stringify(req.body || {});
