@@ -175,4 +175,39 @@ See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) for the original React Native
 
 ## License
 
+- [React Native Website](https://reactnative.dev) - learn more about React Native.
+- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
+- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
+- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
+- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+## Backend (Express + integrations)
+
+We ship a minimal backend under `/server` to keep secrets off-device and centralize integrations.
+
+### Setup
+
+1. Copy `.env.example` to `.env` and fill in PayPal/Plaid secrets (only on the backend).
+2. Install server deps: `npm install --prefix server`.
+3. Start the API: `npm run dev --prefix server` (default port 4000).
+
+### Local webhook testing
+
+- Use a tunneling tool (e.g., ngrok) pointing at `localhost:4000`. Configure the public URL in PayPal/Plaid console.
+- Webhooks are signed (HMAC-SHA256) and idempotent. Duplicate `id`s will return `status: duplicate`.
+- Correlation IDs and structured logs are emitted for every request; metrics counters available at `/health`.
+
+### Tests
+
+- Unit tests for webhook signature verification + idempotency: `npm test --prefix server`.
+
+### PayPal webhook setup
+
+- Point PayPal webhooks to `/webhooks/paypal`.
+- Configure `PAYPAL_WEBHOOK_SECRET` in `.env` to match your PayPal app.
+- Subscription flows use backend-only endpoints:
+  - `POST /billing/paypal/subscription/create` -> returns `approvalUrl` + `providerSubscriptionId`.
+  - After user approval, call `POST /billing/paypal/subscription/confirm` to activate and grant entitlements.
+  - `POST /billing/paypal/subscription/cancel` to terminate.
+- Webhooks are idempotent and state transitions are validated server-side; outbound CRM webhooks are queued with retries.
 See LICENSE file for details.
