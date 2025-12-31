@@ -12,6 +12,11 @@ const paypalWebhookLimiter = rateLimit({
   max: 60, // limit each IP to 60 requests per windowMs for this endpoint
 });
 
+const plaidWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // limit each IP to 60 requests per windowMs for this endpoint
+});
+
 app.use(bodyParser.json({ verify: rawBodySaver }));
 app.use(requestLogger);
 
@@ -59,7 +64,7 @@ app.post('/webhooks/paypal', paypalWebhookLimiter, (req, res) => {
   }
 });
 
-app.post('/webhooks/plaid', (req, res) => {
+app.post('/webhooks/plaid', plaidWebhookLimiter, (req, res) => {
   try {
     const signature = req.header('x-plaid-signature') || '';
     const rawBody = req.rawBody || JSON.stringify(req.body || {});
