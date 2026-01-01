@@ -55,4 +55,9 @@ export const backendClient = {
       method: 'POST',
       body: JSON.stringify({ providerSubscriptionId }),
     }),
+  updatePaymentMethod: (userId: string, paymentMethodId: string) =>
+    request('/billing/payment-method', {
+      method: 'POST',
+      body: JSON.stringify({ userId, paymentMethodId }),
+    }),
 };
