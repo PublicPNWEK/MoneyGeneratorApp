@@ -9,6 +9,11 @@ export const Models = {
   plaidTransactions: new Map(),
   webhookEvents: new Map(),
   outboundWebhookQueue: [],
+  metricsEvents: new Map(),
+  userMetricsDaily: new Map(),
+  settings: {
+    analyticsEnabled: process.env.ANALYTICS_ENABLED !== 'false',
+  },
   metrics: {
     counters: {},
     increment(name) {

@@ -87,3 +87,7 @@ jest.config.js
 package.json
 package-lock.json
 tsconfig.json
+__tests__/
+
+# Metrics artifacts
+server/data/*.ndjson
