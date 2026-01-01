@@ -60,4 +60,23 @@ export const backendClient = {
       method: 'POST',
       body: JSON.stringify({ userId, paymentMethodId }),
     }),
+  recordMetricsEvent: (event: {
+    eventType: string;
+    userId?: string;
+    ts?: string;
+    properties?: Record<string, unknown>;
+    correlationId?: string;
+    source?: string;
+  }) =>
+    request('/metrics/events', {
+      method: 'POST',
+      body: JSON.stringify(event),
+    }),
+  runDailyRollup: (asOf?: string) =>
+    request('/metrics/rollup/daily', {
+      method: 'POST',
+      body: JSON.stringify({ asOf }),
+    }),
+  fetchDailyRollup: (userId: string, date?: string) =>
+    request(`/metrics/rollup/daily?userId=${userId}${date ? `&date=${date}` : ''}`),
 };

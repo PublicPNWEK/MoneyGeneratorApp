@@ -1,11 +1,8 @@
 import crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
+import { config } from './config.js';
 import { EventStatus, Models } from './models.js';
-
-const {
-  PAYPAL_WEBHOOK_SECRET = 'demo-paypal-secret',
-  PLAID_WEBHOOK_SECRET = 'demo-plaid-secret',
-} = process.env;
+import { MetricsService } from './metrics.js';
 
 const STATUS = {
   ACTIVE: 'active',
@@ -24,6 +21,21 @@ function verifySignature(secret, body, signature) {
   const provided = signature || '';
   const matches = compare(expected, provided) || compare(normalizedExpected, provided);
   return matches;
+}
+
+function verifySignatureWithTimestamp(secret, body, signature, timestamp, toleranceMs) {
+  if (!timestamp) return false;
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return false;
+  const now = Date.now();
+  if (Math.abs(now - ts) > toleranceMs) return false;
+  const expected = signPayload(secret, `${timestamp}.${body}`);
+  const normalizedBody = safeNormalize(body);
+  const normalizedExpected = normalizedBody
+    ? signPayload(secret, `${timestamp}.${normalizedBody}`)
+    : expected;
+  const provided = signature || '';
+  return compare(expected, provided) || compare(normalizedExpected, provided);
 }
 
 function compare(expected, provided) {
@@ -62,7 +74,16 @@ function emitInternalEvent(type, payload, log) {
 }
 
 function enqueueOutboundWebhook(event) {
-  Models.outboundWebhookQueue.push({ ...event, attempts: 0, status: 'queued' });
+  const serialized = JSON.stringify(event.payload);
+  const timestamp = Date.now();
+  const signature = signPayload(config.secrets.crmWebhook, `${timestamp}.${serialized}`);
+  Models.outboundWebhookQueue.push({
+    ...event,
+    attempts: 0,
+    status: 'queued',
+    signature,
+    timestamp,
+  });
 }
 
 async function dispatchOutboundWebhooks(log) {
@@ -70,6 +91,17 @@ async function dispatchOutboundWebhooks(log) {
   for (const job of queue) {
     if (job.status === 'delivered') continue;
     try {
+      const payloadBody = JSON.stringify(job.payload);
+      const valid = verifySignatureWithTimestamp(
+        config.secrets.crmWebhook,
+        payloadBody,
+        job.signature,
+        job.timestamp,
+        config.security.webhookReplayWindowMs,
+      );
+      if (!valid) {
+        throw new Error('invalid_outbound_signature');
+      }
       job.attempts += 1;
       // Simulated delivery; in production use fetch/axios to post to CRM URLs
       job.status = 'delivered';
@@ -87,7 +119,7 @@ async function dispatchOutboundWebhooks(log) {
 }
 
 export const IntegrationService = {
-  createSubscription: ({ userId, planId }) => {
+  createSubscription: ({ userId, planId, correlationId, source = 'api' }) => {
     const subId = uuid();
     Models.subscriptions.set(subId, {
       id: subId,
@@ -96,6 +128,14 @@ export const IntegrationService = {
       status: 'active',
     });
     Models.entitlements.set(subId, { id: subId, userId, planId, active: true });
+    MetricsService.emitEvent({
+      eventType: 'subscription.created',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { planId },
+    });
     return { id: subId, status: 'active' };
   },
 
@@ -119,7 +159,7 @@ export const IntegrationService = {
     return record;
   },
 
-  createPayPalSubscription: ({ userId, planId }) => {
+  createPayPalSubscription: ({ userId, planId, correlationId, source = 'billing' }) => {
     const providerSubscriptionId = `paypal-${uuid()}`;
     const approvalUrl = `https://paypal.example/approve/${providerSubscriptionId}`;
     const sub = {
@@ -136,10 +176,18 @@ export const IntegrationService = {
     Models.subscriptions.set(sub.id, sub);
     Models.auditLog.push({ type: 'subscription_created', sub });
     Models.subscriptionEvents.set(providerSubscriptionId, sub.id);
+    MetricsService.emitEvent({
+      eventType: 'subscription.initiated',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { planId, providerSubscriptionId },
+    });
     return { approvalUrl, subscriptionId: sub.id, providerSubscriptionId };
   },
 
-  confirmPayPalSubscription: ({ providerSubscriptionId, userId }) => {
+  confirmPayPalSubscription: ({ providerSubscriptionId, userId, correlationId, source = 'billing' }) => {
     const id = Models.subscriptionEvents.get(providerSubscriptionId);
     if (!id) throw new Error('unknown_subscription');
     const sub = Models.subscriptions.get(id);
@@ -153,10 +201,18 @@ export const IntegrationService = {
       type: 'subscription.updated',
       payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId },
     });
+    MetricsService.emitEvent({
+      eventType: 'subscription.activated',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { providerSubscriptionId, subscriptionId: id },
+    });
     return sub;
   },
 
-  cancelPayPalSubscription: ({ providerSubscriptionId }) => {
+  cancelPayPalSubscription: ({ providerSubscriptionId, correlationId, source = 'billing' }) => {
     const id = Models.subscriptionEvents.get(providerSubscriptionId);
     if (!id) throw new Error('unknown_subscription');
     const sub = Models.subscriptions.get(id);
@@ -169,11 +225,27 @@ export const IntegrationService = {
       type: 'subscription.updated',
       payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId: sub.userId },
     });
+    MetricsService.emitEvent({
+      eventType: 'subscription.canceled',
+      userId: sub.userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { providerSubscriptionId, subscriptionId: id },
+    });
     return sub;
   },
 
-  verifyAndProcessPayPalWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PAYPAL_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPayPalWebhook: (rawBody, signature, timestamp, log, correlationId) => {
+    if (
+      !verifySignatureWithTimestamp(
+        config.secrets.paypalWebhook,
+        rawBody,
+        signature,
+        timestamp,
+        config.security.webhookReplayWindowMs,
+      )
+    ) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);
@@ -186,6 +258,8 @@ export const IntegrationService = {
       IntegrationService.confirmPayPalSubscription({
         providerSubscriptionId: payload.resource.id,
         userId: payload.resource.custom_id || 'demo-user',
+        correlationId,
+        source: 'paypal_webhook',
       });
     }
     emitInternalEvent('paypal.webhook', { id: eventId, type: payload.event_type }, log);
@@ -199,11 +273,27 @@ export const IntegrationService = {
         providerSubscriptionId: payload.resource?.id,
       },
     });
+    MetricsService.emitEvent({
+      eventType: 'webhook.paypal.processed',
+      userId: payload.resource?.custom_id || 'demo-user',
+      ts: new Date(),
+      correlationId,
+      source: 'paypal_webhook',
+      properties: { eventType: payload.event_type, providerSubscriptionId: payload.resource?.id },
+    });
     return result;
   },
 
-  verifyAndProcessPlaidWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PLAID_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPlaidWebhook: (rawBody, signature, timestamp, log, correlationId) => {
+    if (
+      !verifySignatureWithTimestamp(
+        config.secrets.plaidWebhook,
+        rawBody,
+        signature,
+        timestamp,
+        config.security.webhookReplayWindowMs,
+      )
+    ) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);
@@ -212,6 +302,16 @@ export const IntegrationService = {
     if (result.status === EventStatus.DUPLICATE) return result;
 
     emitInternalEvent('plaid.webhook', { code: payload.webhook_code, itemId: payload.item_id }, log);
+    if (payload.webhook_code === 'SYNC_UPDATES_AVAILABLE') {
+      MetricsService.emitEvent({
+        eventType: 'plaid.sync.completed',
+        userId: payload.user_id || 'demo-user',
+        ts: new Date(),
+        correlationId,
+        source: 'plaid_webhook',
+        properties: { itemId: payload.item_id },
+      });
+    }
     return result;
   },
 

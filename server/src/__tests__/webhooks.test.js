@@ -6,6 +6,8 @@ const paypalSecret = 'demo-paypal-secret';
 const plaidSecret = 'demo-plaid-secret';
 
 const sign = (secret, body) => crypto.createHmac('sha256', secret).update(body).digest('hex');
+const signWithTimestamp = (secret, body, ts) =>
+  crypto.createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
 
 describe('webhook verification and idempotency', () => {
   beforeAll(async () => {
@@ -19,18 +21,27 @@ describe('webhook verification and idempotency', () => {
 
   test('rejects invalid PayPal signature', async () => {
     const payload = JSON.stringify({ id: 'evt_1', event_type: 'PAYMENT.SALE.COMPLETED' });
+    const timestamp = Date.now();
     expect(() =>
-      IntegrationService.verifyAndProcessPayPalWebhook(payload, 'bad', console, 'corr-invalid'),
+      IntegrationService.verifyAndProcessPayPalWebhook(
+        payload,
+        'bad',
+        timestamp,
+        console,
+        'corr-invalid',
+      ),
     ).toThrow('invalid_signature');
   });
 
   test('processes PayPal webhook idempotently', async () => {
     const payload = JSON.stringify({ id: 'evt_1', event_type: 'PAYMENT.SALE.COMPLETED' });
-    const signature = await sign(paypalSecret, payload);
+    const timestamp = Date.now();
+    const signature = await signWithTimestamp(paypalSecret, payload, timestamp);
 
     const first = IntegrationService.verifyAndProcessPayPalWebhook(
       payload,
       signature,
+      timestamp,
       console,
       'corr-1',
     );
@@ -39,6 +50,7 @@ describe('webhook verification and idempotency', () => {
     const second = IntegrationService.verifyAndProcessPayPalWebhook(
       payload,
       signature,
+      timestamp,
       console,
       'corr-2',
     );
@@ -47,11 +59,13 @@ describe('webhook verification and idempotency', () => {
 
   test('processes Plaid webhook idempotently', async () => {
     const payload = JSON.stringify({ webhook_code: 'SYNC_UPDATES_AVAILABLE', item_id: 'item_1' });
-    const signature = await sign(plaidSecret, payload);
+    const timestamp = Date.now();
+    const signature = await signWithTimestamp(plaidSecret, payload, timestamp);
 
     const first = IntegrationService.verifyAndProcessPlaidWebhook(
       payload,
       signature,
+      timestamp,
       console,
       'corr-3',
     );
@@ -60,6 +74,7 @@ describe('webhook verification and idempotency', () => {
     const second = IntegrationService.verifyAndProcessPlaidWebhook(
       payload,
       signature,
+      timestamp,
       console,
       'corr-4',
     );

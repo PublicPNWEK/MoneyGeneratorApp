@@ -101,39 +101,27 @@ function App() {
   );
 }
 
-function Root({ theme }: { theme: Theme }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'subscriptions' | 'settings' | 'finance'>(
-    'overview',
-  );
-  const [catalog, setCatalog] = useState<Product[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<Product | null>(null);
-  const [checkoutStatus, setCheckoutStatus] = useState<'idle' | 'loading' | 'error' | 'success'>(
-    'idle',
-  );
-  const [notification, setNotification] = useState<string | null>(null);
-  const [payPalState, setPayPalState] = useState({
-    approvalUrl: '' as string | null,
-    providerSubscriptionId: '' as string | null,
-    status: 'idle' as 'idle' | 'awaiting' | 'active',
-  });
-  const [plaidState, setPlaidState] = useState({
-    linkToken: '' as string | null,
-    connected: false,
-    accounts: defaultAccounts,
-    lastSync: '2m ago',
-  });
-  const [transactions, setTransactions] = useState<Transaction[]>(defaultTransactions);
+function AppContent() {
+  const safeAreaInsets = useSafeAreaInsets();
+  const isDarkMode = useColorScheme() === 'dark';
+  const theme = isDarkMode ? darkTheme : lightTheme;
+  const [screen, setScreen] = React.useState<
+    'home' | 'shop' | 'planDetails' | 'checkout' | 'success'
+  >('home');
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = React.useState<'idle' | 'loading' | 'error'>('idle');
+  const [catalog, setCatalog] = React.useState<Product[]>([]);
+  const [catalogLoading, setCatalogLoading] = React.useState(false);
+  const [catalogError, setCatalogError] = React.useState<string | null>(null);
+  const { entitlements, loading: entitlementsLoading, refresh: refreshEntitlements } = useEntitlements();
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [approvalUrl, setApprovalUrl] = React.useState<string | null>(null);
+  const [providerSubscriptionId, setProviderSubscriptionId] = React.useState<string | null>(null);
+  const [financeRollup, setFinanceRollup] = React.useState<any | null>(null);
+  const [financeLoading, setFinanceLoading] = React.useState(false);
+  const [financeError, setFinanceError] = React.useState<string | null>(null);
 
-  const {
-    entitlements,
-    loading: entitlementsLoading,
-    error: entitlementsError,
-    refresh: refreshEntitlements,
-  } = useEntitlements('demo-user');
-
-  const loadCatalog = useCallback(async () => {
+  const loadCatalog = React.useCallback(async () => {
     try {
       setCatalogLoading(true);
       setCatalogError(null);
@@ -150,6 +138,24 @@ function Root({ theme }: { theme: Theme }) {
     loadCatalog();
     analytics.track({ name: 'app_viewed' });
   }, [loadCatalog]);
+
+  const refreshFinanceRollup = React.useCallback(async () => {
+    setFinanceLoading(true);
+    setFinanceError(null);
+    try {
+      analytics.track({
+        eventType: 'finance_dashboard_viewed',
+        payload: { surface: 'mobile_app' },
+      });
+      await backendClient.runDailyRollup();
+      const data = await backendClient.fetchDailyRollup('demo-user');
+      setFinanceRollup(data.rollup);
+    } catch (err: any) {
+      setFinanceError(err.message || 'Unable to load finance metrics');
+    } finally {
+      setFinanceLoading(false);
+    }
+  }, []);
 
   const startCheckout = async (product: Product) => {
     setSelectedPlan(product);
@@ -433,6 +439,143 @@ function SubscriptionScreen({
               <Pill theme={theme} label={plan.price} />
               <PrimaryButton label="Start" theme={theme} onPress={() => onStartCheckout(plan)} />
               <SecondaryButton label="PayPal" theme={theme} onPress={() => onStartPayPal(plan)} />
+              <FeatureGate
+                theme={theme}
+                entitlements={entitlements}
+                onUpgrade={() => {
+                  analytics.track({ name: 'checkout_started' });
+                  setScreen('checkout');
+                }}
+              />
+            </Card>
+          </View>
+        </Section>
+
+        <Section
+          theme={theme}
+          title="Integration endpoints"
+          description="Backend-only secrets for billing, Plaid link, and entitlements. RN calls go through the integration service."
+        >
+          <View style={styles.cardGrid}>
+            {integrationEndpoints.map(item => (
+              <Card key={item.title} theme={theme}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>
+                    {item.title}
+                  </Text>
+                  <Pill label={item.method} theme={theme} />
+                </View>
+                <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                  {item.description}
+                </Text>
+                <View style={styles.tagRow}>
+                  {item.tags.map(tag => (
+                    <Tag key={tag} label={tag} theme={theme} />
+                  ))}
+                </View>
+              </Card>
+            ))}
+          </View>
+        </Section>
+
+        <Section
+          theme={theme}
+          title="Finance dashboard signals"
+          description="Daily rollups for experiments, without persisting merchant descriptions."
+        >
+          <Card theme={theme}>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+                activeOpacity={0.9}
+                onPress={refreshFinanceRollup}
+              >
+                <Text style={styles.primaryButtonText}>View finance dashboard</Text>
+              </TouchableOpacity>
+              {financeLoading ? <ActivityIndicator color={theme.accent} /> : null}
+              {financeError ? (
+                <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                  {financeError}
+                </Text>
+              ) : null}
+              {financeRollup ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>
+                    Daily metrics for {financeRollup.date}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    Active subscription: {financeRollup.activeSubscription ? 'Yes' : 'No'}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    Connected accounts: {financeRollup.connectedAccountsCount}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d transactions: {financeRollup.txCount30d}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d income: ${financeRollup.totalIncome30d?.toFixed(2) || '0.00'}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d spend: ${financeRollup.totalSpend30d?.toFixed(2) || '0.00'}
+                  </Text>
+                  <View style={{ gap: 4 }}>
+                    <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                      Top categories (30d):
+                    </Text>
+                    {financeRollup.topCategories30d?.length ? (
+                      financeRollup.topCategories30d.map((cat: any) => (
+                        <Text
+                          key={cat.category}
+                          style={[styles.cardDescription, { color: theme.text }]}
+                        >
+                          {cat.category} ({cat.count})
+                        </Text>
+                      ))
+                    ) : (
+                      <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                        No categories recorded yet.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                  Tap to load the latest rollup for your account.
+                </Text>
+              )}
+            </View>
+          </Card>
+        </Section>
+
+        <Section
+          theme={theme}
+          title="Master Key architecture"
+          description="One token, many providers. Our proxy layer routes to the optimal downstream service with markup, KYC, and observability baked in."
+        >
+          <Card theme={theme}>
+            <View style={styles.architectureRow}>
+              {architecture.map(item => (
+                <View key={item.title} style={styles.architectureItem}>
+                  <View
+                    style={[
+                      styles.stepBadge,
+                      { backgroundColor: theme.accentSoft },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.stepBadgeText, { color: theme.accent }]}
+                    >
+                      {item.step}
+                    </Text>
+                  </View>
+                  <Text style={[styles.archTitle, { color: theme.text }]}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.archCopy, { color: theme.subtle }]}>
+                    {item.description}
+                  </Text>
+                </View>
+              ))}
             </View>
           ))}
         </View>
