@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { EventStatus, Models } from './models.js';
+import { MetricsService } from './metrics.js';
 
 const {
   PAYPAL_WEBHOOK_SECRET = 'demo-paypal-secret',
@@ -87,7 +88,7 @@ async function dispatchOutboundWebhooks(log) {
 }
 
 export const IntegrationService = {
-  createSubscription: ({ userId, planId }) => {
+  createSubscription: ({ userId, planId, correlationId, source = 'api' }) => {
     const subId = uuid();
     Models.subscriptions.set(subId, {
       id: subId,
@@ -96,6 +97,14 @@ export const IntegrationService = {
       status: 'active',
     });
     Models.entitlements.set(subId, { id: subId, userId, planId, active: true });
+    MetricsService.emitEvent({
+      eventType: 'subscription.created',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { planId },
+    });
     return { id: subId, status: 'active' };
   },
 
@@ -119,7 +128,7 @@ export const IntegrationService = {
     return record;
   },
 
-  createPayPalSubscription: ({ userId, planId }) => {
+  createPayPalSubscription: ({ userId, planId, correlationId, source = 'billing' }) => {
     const providerSubscriptionId = `paypal-${uuid()}`;
     const approvalUrl = `https://paypal.example/approve/${providerSubscriptionId}`;
     const sub = {
@@ -136,10 +145,18 @@ export const IntegrationService = {
     Models.subscriptions.set(sub.id, sub);
     Models.auditLog.push({ type: 'subscription_created', sub });
     Models.subscriptionEvents.set(providerSubscriptionId, sub.id);
+    MetricsService.emitEvent({
+      eventType: 'subscription.initiated',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { planId, providerSubscriptionId },
+    });
     return { approvalUrl, subscriptionId: sub.id, providerSubscriptionId };
   },
 
-  confirmPayPalSubscription: ({ providerSubscriptionId, userId }) => {
+  confirmPayPalSubscription: ({ providerSubscriptionId, userId, correlationId, source = 'billing' }) => {
     const id = Models.subscriptionEvents.get(providerSubscriptionId);
     if (!id) throw new Error('unknown_subscription');
     const sub = Models.subscriptions.get(id);
@@ -153,10 +170,18 @@ export const IntegrationService = {
       type: 'subscription.updated',
       payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId },
     });
+    MetricsService.emitEvent({
+      eventType: 'subscription.activated',
+      userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { providerSubscriptionId, subscriptionId: id },
+    });
     return sub;
   },
 
-  cancelPayPalSubscription: ({ providerSubscriptionId }) => {
+  cancelPayPalSubscription: ({ providerSubscriptionId, correlationId, source = 'billing' }) => {
     const id = Models.subscriptionEvents.get(providerSubscriptionId);
     if (!id) throw new Error('unknown_subscription');
     const sub = Models.subscriptions.get(id);
@@ -168,6 +193,14 @@ export const IntegrationService = {
       id: uuid(),
       type: 'subscription.updated',
       payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId: sub.userId },
+    });
+    MetricsService.emitEvent({
+      eventType: 'subscription.canceled',
+      userId: sub.userId,
+      ts: new Date(),
+      correlationId,
+      source,
+      properties: { providerSubscriptionId, subscriptionId: id },
     });
     return sub;
   },
@@ -186,6 +219,8 @@ export const IntegrationService = {
       IntegrationService.confirmPayPalSubscription({
         providerSubscriptionId: payload.resource.id,
         userId: payload.resource.custom_id || 'demo-user',
+        correlationId,
+        source: 'paypal_webhook',
       });
     }
     emitInternalEvent('paypal.webhook', { id: eventId, type: payload.event_type }, log);
@@ -198,6 +233,14 @@ export const IntegrationService = {
         status: payload.resource?.status,
         providerSubscriptionId: payload.resource?.id,
       },
+    });
+    MetricsService.emitEvent({
+      eventType: 'webhook.paypal.processed',
+      userId: payload.resource?.custom_id || 'demo-user',
+      ts: new Date(),
+      correlationId,
+      source: 'paypal_webhook',
+      properties: { eventType: payload.event_type, providerSubscriptionId: payload.resource?.id },
     });
     return result;
   },
@@ -212,6 +255,16 @@ export const IntegrationService = {
     if (result.status === EventStatus.DUPLICATE) return result;
 
     emitInternalEvent('plaid.webhook', { code: payload.webhook_code, itemId: payload.item_id }, log);
+    if (payload.webhook_code === 'SYNC_UPDATES_AVAILABLE') {
+      MetricsService.emitEvent({
+        eventType: 'plaid.sync.completed',
+        userId: payload.user_id || 'demo-user',
+        ts: new Date(),
+        correlationId,
+        source: 'plaid_webhook',
+        properties: { itemId: payload.item_id },
+      });
+    }
     return result;
   },
 
