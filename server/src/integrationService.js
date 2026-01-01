@@ -1,12 +1,8 @@
 import crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
+import { config } from './config.js';
 import { EventStatus, Models } from './models.js';
 import { MetricsService } from './metrics.js';
-
-const {
-  PAYPAL_WEBHOOK_SECRET = 'demo-paypal-secret',
-  PLAID_WEBHOOK_SECRET = 'demo-plaid-secret',
-} = process.env;
 
 const STATUS = {
   ACTIVE: 'active',
@@ -25,6 +21,21 @@ function verifySignature(secret, body, signature) {
   const provided = signature || '';
   const matches = compare(expected, provided) || compare(normalizedExpected, provided);
   return matches;
+}
+
+function verifySignatureWithTimestamp(secret, body, signature, timestamp, toleranceMs) {
+  if (!timestamp) return false;
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) return false;
+  const now = Date.now();
+  if (Math.abs(now - ts) > toleranceMs) return false;
+  const expected = signPayload(secret, `${timestamp}.${body}`);
+  const normalizedBody = safeNormalize(body);
+  const normalizedExpected = normalizedBody
+    ? signPayload(secret, `${timestamp}.${normalizedBody}`)
+    : expected;
+  const provided = signature || '';
+  return compare(expected, provided) || compare(normalizedExpected, provided);
 }
 
 function compare(expected, provided) {
@@ -63,7 +74,16 @@ function emitInternalEvent(type, payload, log) {
 }
 
 function enqueueOutboundWebhook(event) {
-  Models.outboundWebhookQueue.push({ ...event, attempts: 0, status: 'queued' });
+  const serialized = JSON.stringify(event.payload);
+  const timestamp = Date.now();
+  const signature = signPayload(config.secrets.crmWebhook, `${timestamp}.${serialized}`);
+  Models.outboundWebhookQueue.push({
+    ...event,
+    attempts: 0,
+    status: 'queued',
+    signature,
+    timestamp,
+  });
 }
 
 async function dispatchOutboundWebhooks(log) {
@@ -71,6 +91,17 @@ async function dispatchOutboundWebhooks(log) {
   for (const job of queue) {
     if (job.status === 'delivered') continue;
     try {
+      const payloadBody = JSON.stringify(job.payload);
+      const valid = verifySignatureWithTimestamp(
+        config.secrets.crmWebhook,
+        payloadBody,
+        job.signature,
+        job.timestamp,
+        config.security.webhookReplayWindowMs,
+      );
+      if (!valid) {
+        throw new Error('invalid_outbound_signature');
+      }
       job.attempts += 1;
       // Simulated delivery; in production use fetch/axios to post to CRM URLs
       job.status = 'delivered';
@@ -205,8 +236,16 @@ export const IntegrationService = {
     return sub;
   },
 
-  verifyAndProcessPayPalWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PAYPAL_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPayPalWebhook: (rawBody, signature, timestamp, log, correlationId) => {
+    if (
+      !verifySignatureWithTimestamp(
+        config.secrets.paypalWebhook,
+        rawBody,
+        signature,
+        timestamp,
+        config.security.webhookReplayWindowMs,
+      )
+    ) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);
@@ -245,8 +284,16 @@ export const IntegrationService = {
     return result;
   },
 
-  verifyAndProcessPlaidWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PLAID_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPlaidWebhook: (rawBody, signature, timestamp, log, correlationId) => {
+    if (
+      !verifySignatureWithTimestamp(
+        config.secrets.plaidWebhook,
+        rawBody,
+        signature,
+        timestamp,
+        config.security.webhookReplayWindowMs,
+      )
+    ) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);

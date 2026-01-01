@@ -1,5 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import { config } from './config.js';
 import { IntegrationService } from './integrationService.js';
 import { Models } from './models.js';
 import { requestLogger } from './logger.js';
@@ -8,18 +9,54 @@ import { MetricsService } from './metrics.js';
 
 const app = express();
 
-const paypalWebhookLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 60, // limit each IP to 60 requests per windowMs for this endpoint
+const publicLimiter = rateLimit({
+  windowMs: config.rateLimiting.windowMs,
+  max: config.rateLimiting.max,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-const plaidWebhookLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 60, // limit each IP to 60 requests per windowMs for this endpoint
-});
+const webhookLimiterConfig = {
+  windowMs: config.rateLimiting.windowMs,
+  max: config.rateLimiting.webhookMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+const paypalWebhookLimiter = rateLimit(webhookLimiterConfig);
+const plaidWebhookLimiter = rateLimit(webhookLimiterConfig);
 
 app.use(bodyParser.json({ verify: rawBodySaver }));
 app.use(requestLogger);
+app.use(['/webhooks', '/integrations/plaid'], publicLimiter);
+
+function requireUser(req, res, next) {
+  const user = authenticate(req);
+  if (!user) {
+    req.log.warn('auth_missing_or_invalid');
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  req.user = user;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  const user = authenticate(req);
+  if (!user || user.role !== 'admin') {
+    req.log.warn('admin_required');
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  req.user = user;
+  next();
+}
+
+function authenticate(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return null;
+  if (token === config.auth.adminToken) return { id: 'admin', role: 'admin' };
+  if (token === config.auth.userToken) return { id: 'user', role: 'user' };
+  return null;
+}
 
 app.get('/health', (req, res) => {
   req.log.info('health_check');
@@ -76,10 +113,12 @@ app.post('/integrations/plaid/exchange', (req, res) => {
 app.post('/webhooks/paypal', paypalWebhookLimiter, (req, res) => {
   try {
     const signature = req.header('x-paypal-signature') || '';
+    const timestamp = req.header('x-paypal-transmission-time') || req.requestTimestamp;
     const rawBody = req.rawBody || JSON.stringify(req.body || {});
     const result = IntegrationService.verifyAndProcessPayPalWebhook(
       rawBody,
       signature,
+      timestamp,
       req.log,
       req.correlationId,
     );
@@ -93,10 +132,12 @@ app.post('/webhooks/paypal', paypalWebhookLimiter, (req, res) => {
 app.post('/webhooks/plaid', plaidWebhookLimiter, (req, res) => {
   try {
     const signature = req.header('x-plaid-signature') || '';
+    const timestamp = req.header('x-plaid-timestamp') || req.requestTimestamp;
     const rawBody = req.rawBody || JSON.stringify(req.body || {});
     const result = IntegrationService.verifyAndProcessPlaidWebhook(
       rawBody,
       signature,
+      timestamp,
       req.log,
       req.correlationId,
     );
@@ -108,7 +149,7 @@ app.post('/webhooks/plaid', plaidWebhookLimiter, (req, res) => {
 });
 
 // PayPal billing endpoints (simulated)
-app.post('/billing/paypal/subscription/create', (req, res) => {
+app.post('/billing/paypal/subscription/create', requireUser, (req, res) => {
   const { userId = 'demo-user', planId = 'plan_pro' } = req.body || {};
   const result = IntegrationService.createPayPalSubscription({
     userId,
@@ -120,8 +161,8 @@ app.post('/billing/paypal/subscription/create', (req, res) => {
   res.json(result);
 });
 
-app.post('/billing/paypal/subscription/confirm', (req, res) => {
-  const { providerSubscriptionId, userId = 'demo-user' } = req.body || {};
+app.post('/billing/paypal/subscription/confirm', requireUser, (req, res) => {
+  const { providerSubscriptionId, userId = req.user?.id || 'demo-user' } = req.body || {};
   try {
     const sub = IntegrationService.confirmPayPalSubscription({
       providerSubscriptionId,
@@ -130,7 +171,7 @@ app.post('/billing/paypal/subscription/confirm', (req, res) => {
       source: 'paypal_api',
     });
     const entitlement = IntegrationService.createEntitlement({
-      userId,
+      userId: req.user?.id || userId,
       productId: sub.planId,
       kind: 'plan',
       durationDays: 30,
@@ -141,7 +182,7 @@ app.post('/billing/paypal/subscription/confirm', (req, res) => {
   }
 });
 
-app.post('/billing/paypal/subscription/cancel', (req, res) => {
+app.post('/billing/paypal/subscription/cancel', requireUser, (req, res) => {
   const { providerSubscriptionId } = req.body || {};
   try {
     const sub = IntegrationService.cancelPayPalSubscription({
@@ -155,7 +196,7 @@ app.post('/billing/paypal/subscription/cancel', (req, res) => {
   }
 });
 
-app.post('/outbound/dispatch', async (req, res) => {
+app.post('/outbound/dispatch', requireAdmin, async (req, res) => {
   await IntegrationService.dispatchOutboundWebhooks(req.log);
   res.json({ status: 'ok', queueLength: Models.outboundWebhookQueue.length });
 });
