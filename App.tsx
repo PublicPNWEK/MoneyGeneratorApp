@@ -9,8 +9,6 @@ import {
   TouchableOpacity,
   View,
   useColorScheme,
-  useColorScheme,
-  View,
 } from 'react-native';
 import {
   SafeAreaProvider,
@@ -325,6 +323,9 @@ function AppContent() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [approvalUrl, setApprovalUrl] = React.useState<string | null>(null);
   const [providerSubscriptionId, setProviderSubscriptionId] = React.useState<string | null>(null);
+  const [financeRollup, setFinanceRollup] = React.useState<any | null>(null);
+  const [financeLoading, setFinanceLoading] = React.useState(false);
+  const [financeError, setFinanceError] = React.useState<string | null>(null);
 
   const loadCatalog = React.useCallback(async () => {
     try {
@@ -345,6 +346,24 @@ function AppContent() {
       analytics.track({ name: 'shop_viewed' });
     }
   }, [screen, loadCatalog]);
+
+  const refreshFinanceRollup = React.useCallback(async () => {
+    setFinanceLoading(true);
+    setFinanceError(null);
+    try {
+      analytics.track({
+        eventType: 'finance_dashboard_viewed',
+        payload: { surface: 'mobile_app' },
+      });
+      await backendClient.runDailyRollup();
+      const data = await backendClient.fetchDailyRollup('demo-user');
+      setFinanceRollup(data.rollup);
+    } catch (err: any) {
+      setFinanceError(err.message || 'Unable to load finance metrics');
+    } finally {
+      setFinanceLoading(false);
+    }
+  }, []);
 
   const startCheckout = async (product: Product) => {
     setSelectedProduct(product);
@@ -654,6 +673,75 @@ function AppContent() {
               </Card>
             ))}
           </View>
+        </Section>
+
+        <Section
+          theme={theme}
+          title="Finance dashboard signals"
+          description="Daily rollups for experiments, without persisting merchant descriptions."
+        >
+          <Card theme={theme}>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+                activeOpacity={0.9}
+                onPress={refreshFinanceRollup}
+              >
+                <Text style={styles.primaryButtonText}>View finance dashboard</Text>
+              </TouchableOpacity>
+              {financeLoading ? <ActivityIndicator color={theme.accent} /> : null}
+              {financeError ? (
+                <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                  {financeError}
+                </Text>
+              ) : null}
+              {financeRollup ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>
+                    Daily metrics for {financeRollup.date}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    Active subscription: {financeRollup.activeSubscription ? 'Yes' : 'No'}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    Connected accounts: {financeRollup.connectedAccountsCount}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d transactions: {financeRollup.txCount30d}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d income: ${financeRollup.totalIncome30d?.toFixed(2) || '0.00'}
+                  </Text>
+                  <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                    30d spend: ${financeRollup.totalSpend30d?.toFixed(2) || '0.00'}
+                  </Text>
+                  <View style={{ gap: 4 }}>
+                    <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                      Top categories (30d):
+                    </Text>
+                    {financeRollup.topCategories30d?.length ? (
+                      financeRollup.topCategories30d.map((cat: any) => (
+                        <Text
+                          key={cat.category}
+                          style={[styles.cardDescription, { color: theme.text }]}
+                        >
+                          {cat.category} ({cat.count})
+                        </Text>
+                      ))
+                    ) : (
+                      <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                        No categories recorded yet.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <Text style={[styles.cardDescription, { color: theme.subtle }]}>
+                  Tap to load the latest rollup for your account.
+                </Text>
+              )}
+            </View>
+          </Card>
         </Section>
 
         <Section
