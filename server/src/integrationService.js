@@ -2,6 +2,16 @@ import crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { config } from './config.js';
 import { EventStatus, Models } from './models.js';
+import { httpClient } from './httpClient.js';
+
+const {
+  PAYPAL_WEBHOOK_SECRET = 'demo-paypal-secret',
+  PLAID_WEBHOOK_SECRET = 'demo-plaid-secret',
+  PAYPAL_API_BASE = 'https://api-m.sandbox.paypal.com',
+  PLAID_API_BASE = 'https://sandbox.plaid.com',
+  CRM_WEBHOOK_URL = 'https://crm.example.com/webhooks',
+  ENABLE_PROVIDER_HTTP = 'false',
+} = process.env;
 import { MetricsService } from './metrics.js';
 
 const STATUS = {
@@ -73,6 +83,8 @@ function emitInternalEvent(type, payload, log) {
   log?.info('internal_event', { type, payload });
 }
 
+function enqueueOutboundWebhook(event, correlationId) {
+  const targetUrl = event.targetUrl || CRM_WEBHOOK_URL;
 function enqueueOutboundWebhook(event) {
   const serialized = JSON.stringify(event.payload);
   const timestamp = Date.now();
@@ -81,6 +93,56 @@ function enqueueOutboundWebhook(event) {
     ...event,
     attempts: 0,
     status: 'queued',
+    targetUrl,
+    correlationId,
+  });
+}
+
+async function callProvider({ url, method = 'POST', headers = {}, body, log, tag, retryOnStatuses }) {
+  if (ENABLE_PROVIDER_HTTP !== 'true') {
+    log?.info('provider_http_skipped', { tag, url });
+    return new Response(JSON.stringify({ skipped: true }), { status: 200 });
+  }
+  return httpClient.request({
+    url,
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+    retryOnStatuses,
+    log,
+    tag,
+  });
+}
+
+async function sendPayPalRequest(path, { body, idempotencyKey, log }) {
+  const url = `${PAYPAL_API_BASE}${path}`;
+  const headers = {
+    'content-type': 'application/json',
+  };
+  if (idempotencyKey) {
+    headers['PayPal-Request-Id'] = idempotencyKey;
+  }
+  return callProvider({
+    url,
+    method: 'POST',
+    headers,
+    body,
+    log,
+    tag: 'paypal_api',
+  });
+}
+
+async function sendPlaidRequest(path, { body, log }) {
+  const url = `${PLAID_API_BASE}${path}`;
+  return callProvider({
+    url,
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body,
+    log,
+    tag: 'plaid_api',
     signature,
     timestamp,
   });
@@ -90,6 +152,8 @@ async function dispatchOutboundWebhooks(log) {
   const queue = Models.outboundWebhookQueue;
   for (const job of queue) {
     if (job.status === 'delivered') continue;
+    if (job.status === 'failed' && !job.retryAt) continue;
+    if (job.retryAt && job.retryAt > Date.now()) continue;
     try {
       const payloadBody = JSON.stringify(job.payload);
       const valid = verifySignatureWithTimestamp(
@@ -103,7 +167,27 @@ async function dispatchOutboundWebhooks(log) {
         throw new Error('invalid_outbound_signature');
       }
       job.attempts += 1;
-      // Simulated delivery; in production use fetch/axios to post to CRM URLs
+      const response = await httpClient.request({
+        url: job.targetUrl,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-correlation-id': job.correlationId,
+        },
+        body: JSON.stringify(job.payload),
+        retryOnStatuses: status => status >= 500 || status === 408 || status === 429,
+        log,
+        tag: 'outbound_webhook',
+      });
+
+      if (!response.ok) {
+        const error = new Error(`non_retryable_status_${response.status}`);
+        job.status = 'failed';
+        job.error = error.message;
+        emitInternalEvent('outbound_webhook.failed', { id: job.id, status: response.status }, log);
+        continue;
+      }
+
       job.status = 'delivered';
       job.deliveredAt = new Date().toISOString();
       emitInternalEvent('outbound_webhook.delivered', { id: job.id }, log);
@@ -113,6 +197,7 @@ async function dispatchOutboundWebhooks(log) {
       if (job.attempts < 5) {
         const delay = Math.min(30000, 1000 * 2 ** job.attempts);
         job.retryAt = Date.now() + delay;
+        emitInternalEvent('outbound_webhook.retry_scheduled', { id: job.id, delay }, log);
       }
     }
   }
@@ -159,6 +244,7 @@ export const IntegrationService = {
     return record;
   },
 
+  createPayPalSubscription: ({ userId, planId, correlationId, log }) => {
   createPayPalSubscription: ({ userId, planId, correlationId, source = 'billing' }) => {
     const providerSubscriptionId = `paypal-${uuid()}`;
     const approvalUrl = `https://paypal.example/approve/${providerSubscriptionId}`;
@@ -173,9 +259,21 @@ export const IntegrationService = {
       currentPeriodEnd: null,
       userId,
     };
+    const idempotencyKey = uuid();
+    sendPayPalRequest('/v1/billing/subscriptions', {
+      body: { plan_id: planId, custom_id: userId },
+      idempotencyKey,
+      log,
+    }).catch(err => {
+      log?.warn('paypal_create_subscription_failed', { error: err.message });
+    });
     Models.subscriptions.set(sub.id, sub);
-    Models.auditLog.push({ type: 'subscription_created', sub });
+    Models.auditLog.push({ type: 'subscription_created', sub, idempotencyKey });
     Models.subscriptionEvents.set(providerSubscriptionId, sub.id);
+    return { approvalUrl, subscriptionId: sub.id, providerSubscriptionId, idempotencyKey };
+  },
+
+  confirmPayPalSubscription: ({ providerSubscriptionId, userId, correlationId, log }) => {
     MetricsService.emitEvent({
       eventType: 'subscription.initiated',
       userId,
@@ -196,6 +294,22 @@ export const IntegrationService = {
     sub.startedAt = new Date().toISOString();
     sub.currentPeriodEnd = new Date(Date.now() + 30 * 86400000).toISOString();
     Models.auditLog.push({ type: 'subscription_activated', sub });
+    enqueueOutboundWebhook(
+      {
+        id: uuid(),
+        type: 'subscription.updated',
+        payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId },
+      },
+      correlationId,
+    );
+    sendPayPalRequest(`/v1/billing/subscriptions/${providerSubscriptionId}/activate`, {
+      body: { reason: 'user_confirmed' },
+      log,
+    }).catch(err => log?.warn('paypal_confirm_subscription_failed', { error: err.message }));
+    return sub;
+  },
+
+  cancelPayPalSubscription: ({ providerSubscriptionId, correlationId, log }) => {
     enqueueOutboundWebhook({
       id: uuid(),
       type: 'subscription.updated',
@@ -220,6 +334,18 @@ export const IntegrationService = {
     sub.status = STATUS.CANCELED;
     sub.canceledAt = new Date().toISOString();
     Models.auditLog.push({ type: 'subscription_canceled', sub });
+    enqueueOutboundWebhook(
+      {
+        id: uuid(),
+        type: 'subscription.updated',
+        payload: { subscriptionId: id, status: sub.status, provider: 'paypal', userId: sub.userId },
+      },
+      correlationId,
+    );
+    sendPayPalRequest(`/v1/billing/subscriptions/${providerSubscriptionId}/cancel`, {
+      body: { reason: 'user_requested' },
+      log,
+    }).catch(err => log?.warn('paypal_cancel_subscription_failed', { error: err.message }));
     enqueueOutboundWebhook({
       id: uuid(),
       type: 'subscription.updated',
@@ -259,19 +385,24 @@ export const IntegrationService = {
         providerSubscriptionId: payload.resource.id,
         userId: payload.resource.custom_id || 'demo-user',
         correlationId,
+        log,
         source: 'paypal_webhook',
       });
     }
     emitInternalEvent('paypal.webhook', { id: eventId, type: payload.event_type }, log);
-    enqueueOutboundWebhook({
-      id: uuid(),
-      type: 'subscription.updated',
-      payload: {
-        eventId,
-        provider: 'paypal',
-        status: payload.resource?.status,
-        providerSubscriptionId: payload.resource?.id,
+    enqueueOutboundWebhook(
+      {
+        id: uuid(),
+        type: 'subscription.updated',
+        payload: {
+          eventId,
+          provider: 'paypal',
+          status: payload.resource?.status,
+          providerSubscriptionId: payload.resource?.id,
+        },
       },
+      correlationId,
+    );
     });
     MetricsService.emitEvent({
       eventType: 'webhook.paypal.processed',

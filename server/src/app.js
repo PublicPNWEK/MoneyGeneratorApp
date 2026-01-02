@@ -155,6 +155,7 @@ app.post('/billing/paypal/subscription/create', requireUser, (req, res) => {
     userId,
     planId,
     correlationId: req.correlationId,
+    log: req.log,
     source: 'paypal_api',
   });
   req.log.info('paypal_subscription_created', { userId, planId });
@@ -166,6 +167,11 @@ app.post('/billing/paypal/subscription/confirm', requireUser, (req, res) => {
   try {
     const sub = IntegrationService.confirmPayPalSubscription({
       providerSubscriptionId,
+      userId,
+      correlationId: req.correlationId,
+      log: req.log,
+    });
+    const entitlement = IntegrationService.createEntitlement({
       userId,
       correlationId: req.correlationId,
       source: 'paypal_api',
@@ -188,6 +194,7 @@ app.post('/billing/paypal/subscription/cancel', requireUser, (req, res) => {
     const sub = IntegrationService.cancelPayPalSubscription({
       providerSubscriptionId,
       correlationId: req.correlationId,
+      log: req.log,
       source: 'paypal_api',
     });
     res.json({ subscription: sub });
