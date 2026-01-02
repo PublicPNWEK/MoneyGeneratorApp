@@ -84,7 +84,12 @@ app.post('/webhooks/plaid', plaidWebhookLimiter, (req, res) => {
 // PayPal billing endpoints (simulated)
 app.post('/billing/paypal/subscription/create', (req, res) => {
   const { userId = 'demo-user', planId = 'plan_pro' } = req.body || {};
-  const result = IntegrationService.createPayPalSubscription({ userId, planId });
+  const result = IntegrationService.createPayPalSubscription({
+    userId,
+    planId,
+    correlationId: req.correlationId,
+    log: req.log,
+  });
   req.log.info('paypal_subscription_created', { userId, planId });
   res.json(result);
 });
@@ -92,7 +97,12 @@ app.post('/billing/paypal/subscription/create', (req, res) => {
 app.post('/billing/paypal/subscription/confirm', (req, res) => {
   const { providerSubscriptionId, userId = 'demo-user' } = req.body || {};
   try {
-    const sub = IntegrationService.confirmPayPalSubscription({ providerSubscriptionId, userId });
+    const sub = IntegrationService.confirmPayPalSubscription({
+      providerSubscriptionId,
+      userId,
+      correlationId: req.correlationId,
+      log: req.log,
+    });
     const entitlement = IntegrationService.createEntitlement({
       userId,
       productId: sub.planId,
@@ -108,7 +118,11 @@ app.post('/billing/paypal/subscription/confirm', (req, res) => {
 app.post('/billing/paypal/subscription/cancel', (req, res) => {
   const { providerSubscriptionId } = req.body || {};
   try {
-    const sub = IntegrationService.cancelPayPalSubscription({ providerSubscriptionId });
+    const sub = IntegrationService.cancelPayPalSubscription({
+      providerSubscriptionId,
+      correlationId: req.correlationId,
+      log: req.log,
+    });
     res.json({ subscription: sub });
   } catch (e) {
     res.status(400).json({ error: e.message });
