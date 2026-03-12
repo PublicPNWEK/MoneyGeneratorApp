@@ -6,33 +6,32 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="products-page">
-      <div className="hero">
-        <h2>Maximize Your Earnings</h2>
-        <p>Choose the plan that works best for your gig economy needs</p>
-        <div className="hero-buttons">
-          <button className="btn-primary" onClick={openCheckout}>
+      <div className="card elevated" style={{ textAlign: 'center', padding: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
+        <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, marginBottom: 'var(--space-2)' }}>Maximize Your Earnings</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>Choose the plan that works best for your gig economy needs</p>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="button primary" onClick={openCheckout}>
             View Plans
           </button>
-          <button className="btn-secondary" onClick={connectBank}>
+          <button className="button secondary" onClick={connectBank}>
             Connect Bank
           </button>
         </div>
       </div>
 
-      <section className="products">
-        <h2>Featured Products</h2>
-        <div className="products-grid">
+      <section style={{ marginBottom: 'var(--space-6)' }}>
+        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Featured Products</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>
           {products.map((product) => (
-            <div key={product.id} className="product-card">
-              <span className="product-type">{product.type}</span>
-              <h3>{product.name}</h3>
-              <p className="product-description">{product.description}</p>
-              <div className="product-footer">
-                <span className="product-price">{product.price}</span>
-                <button
-                  className="btn-primary"
-                  onClick={openCheckout}
-                >
+            <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ marginBottom: 'var(--space-3)' }}>
+                <span className="badge bg-emerald-100 text-emerald-700">{product.type}</span>
+              </div>
+              <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>{product.name}</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', flex: 1 }}>{product.description}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
+                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-emerald-600)' }}>{product.price}</span>
+                <button className="button primary" onClick={openCheckout}>
                   Select
                 </button>
               </div>

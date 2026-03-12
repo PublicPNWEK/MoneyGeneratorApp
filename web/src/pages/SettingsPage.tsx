@@ -100,7 +100,7 @@ export const SettingsPage: React.FC = () => {
     };
 
   return (
-    <div className="settings-page">
+    <div className="settings-page" style={{ maxWidth: '1000px', margin: '0 auto' }}>
       {tour.isActive && (
         <GuidedTour
           steps={settingsTourSteps}
@@ -123,104 +123,110 @@ export const SettingsPage: React.FC = () => {
         />
       )}
       
-      <header className="page-header">
-        <h2>Settings</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
+        <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700 }}>Settings</h1>
         {shouldShowTour && (
           <button
+            className="button primary"
             onClick={tour.startTour}
-            style={{
-              marginLeft: '1rem',
-              padding: '0.5rem 1rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-            }}
           >
             🎯 Start Tour
           </button>
         )}
-      </header>
-      
-      <div className="settings-section" data-tour="profile-section">
-        <h3>Account</h3>
-        <div className="settings-item">
-          <div className="icon"><CreditCard size={20} /></div>
-          <div className="content">
-            <span className="label">Subscription</span>
-            <span className="value">{userProfile.subscription || 'Free Plan'}</span>
+      </div>
+
+      {/* Account Settings */}
+      <div className="card elevated" data-tour="profile-section" style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Account Settings</h3>
+        </div>
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <CreditCard size={20} style={{ color: 'var(--color-emerald-600)' }} />
+              <div>
+                <div style={{ fontWeight: 600 }}>Subscription</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{userProfile.subscription || 'Free Plan'}</div>
+              </div>
+            </div>
+            <button className="button primary" onClick={openCheckout}>Upgrade</button>
           </div>
-          <button className="btn-link" onClick={openCheckout}>Upgrade</button>
         </div>
       </div>
 
-      <div className="settings-section" data-tour="security-section">
-        <h3>Preferences</h3>
-         <div className="settings-item">
-          <div className="icon"><Globe size={20} /></div>
-          <div className="content">
-            <span className="label">Language</span>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+      {/* Preferences */}
+      <div className="card elevated" data-tour="security-section" style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Preferences</h3>
+        </div>
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div style={{ paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <Globe size={20} style={{ color: 'var(--color-emerald-600)' }} />
+              <label style={{ fontWeight: 600 }}>Language</label>
+            </div>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%', maxWidth: '300px' }}>
               <option value="en-US">English (US)</option>
               <option value="es-MX">Español (LatAm)</option>
               <option value="fr-FR">Français</option>
             </select>
           </div>
-        </div>
-         <div className="settings-item">
-          <div className="icon"><Globe size={20} /></div>
-          <div className="content">
-            <span className="label">Currency</span>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <div style={{ paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <Globe size={20} style={{ color: 'var(--color-emerald-600)' }} />
+              <label style={{ fontWeight: 600 }}>Currency</label>
+            </div>
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%', maxWidth: '300px' }}>
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
               <option value="MXN">MXN</option>
             </select>
           </div>
-        </div>
-         <div className="settings-item">
-          <div className="icon"><Shield size={20} /></div>
-          <div className="content">
-            <span className="label">Security</span>
-            <span className="value">{twoFactorEnabled ? '2FA Enabled' : '2FA Disabled'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <Shield size={20} style={{ color: 'var(--color-emerald-600)' }} />
+              <div>
+                <div style={{ fontWeight: 600 }}>Two-Factor Authentication</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{twoFactorEnabled ? '✓ Enabled' : '○ Not Enabled'}</div>
+              </div>
+            </div>
+            {!twoFactorEnabled ? (
+              <button className="button primary" onClick={handleEnable2FA}>Enable 2FA</button>
+            ) : (
+              <button className="button secondary"><KeyRound size={14} /> Backup codes</button>
+            )}
           </div>
-          {!twoFactorEnabled ? (
-            <button className="btn-secondary" onClick={handleEnable2FA}>Enable 2FA</button>
-          ) : (
-            <button className="btn-link"><KeyRound size={14} /> Backup codes</button>
-          )}
         </div>
       </div>
 
-      <div className="settings-section" data-tour="billing-section">
-        <h3>Data Export</h3>
-        <div className="settings-item">
-          <div className="icon"><Download size={20} /></div>
-          <div className="content">
-            <span className="label">Export your data</span>
-            <span className="value">CSV or JSON with transactions, goals, and mileage</span>
+      {/* Data Export */}
+      <div className="card elevated" data-tour="billing-section" style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Data & Export</h3>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+              <Download size={20} style={{ color: 'var(--color-emerald-600)' }} />
+              <span style={{ fontWeight: 600 }}>Export your data</span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>CSV or JSON with all transactions, goals, and insights</p>
           </div>
-          <div className="export-actions">
-            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
               <option value="csv">CSV</option>
               <option value="json">JSON</option>
             </select>
-            <button className="btn-primary-sm" onClick={handleExport} disabled={isExporting}>{isExporting ? 'Preparing...' : 'Request export'}</button>
+            <button className="button primary" onClick={handleExport} disabled={isExporting}>{isExporting ? 'Preparing...' : 'Export'}</button>
           </div>
         </div>
       </div>
-      
-      <div className="settings-footer">
-          <button className="btn-logout"><LogOut size={16} /> Sign Out</button>
-          <p className="version">Version 1.0.0 (Build 2026.03.12)</p>
-      </div>
 
-      <style>{`
-        .settings-item select { padding: 0.5rem; border-radius: 8px; border: 1px solid #e2e8f0; background: white; }
-        .export-actions { display: flex; align-items: center; gap: 0.5rem; }
-      `}</style>
+      {/* Account Actions */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-6)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--border-color)' }}>
+        <button className="button danger" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><LogOut size={16} /> Sign Out</button>
+        <div style={{ marginLeft: 'auto', alignSelf: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>Version 1.0.0 (Build 2026.03.12)</div>
+      </div>
     </div>
   );
 };

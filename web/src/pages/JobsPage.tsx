@@ -240,12 +240,12 @@ export const JobsPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="job-filters" data-tour="filter-panel" style={{ padding: '0 1rem 1rem', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
-          <button className={`filter-chip ${filterType === 'all' ? 'active' : ''}`} onClick={() => setFilterType('all')}>All</button>
-          <button className={`filter-chip ${filterType === 'high' ? 'active' : ''}`} onClick={() => setFilterType('high')}>Urgent</button>
-          <button className={`filter-chip ${filterType === 'delivery' ? 'active' : ''}`} onClick={() => setFilterType('delivery')}>Delivery</button>
-          <button className={`filter-chip ${filterType === 'medium' ? 'active' : ''}`} onClick={() => setFilterType('medium')}>Good fit</button>
-          <button className={`filter-chip ${filterType === 'low' ? 'active' : ''}`} onClick={() => setFilterType('low')}>Flexible</button>
+      <div className="job-filters" data-tour="filter-panel" style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
+          <button className={`badge ${filterType === 'all' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`} onClick={() => setFilterType('all')}>All</button>
+          <button className={`badge ${filterType === 'high' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`} onClick={() => setFilterType('high')}>Urgent</button>
+          <button className={`badge ${filterType === 'delivery' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'}`} onClick={() => setFilterType('delivery')}>Delivery</button>
+          <button className={`badge ${filterType === 'medium' ? 'bg-green-100 text-green-700' : 'bg-gray-100'}`} onClick={() => setFilterType('medium')}>Good fit</button>
+          <button className={`badge ${filterType === 'low' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100'}`} onClick={() => setFilterType('low')}>Flexible</button>
       </div>
 
       <div className="advanced-filters">
