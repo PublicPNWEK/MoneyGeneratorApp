@@ -45,6 +45,15 @@
   --color-gold-800: #92400e;
   --color-gold-900: #78350f;
 
+  /* Accent Colors */
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  
+  --color-purple-400: #a78bfa;
+  --color-purple-500: #8b5cf6;
+  --color-purple-600: #7c3aed;
+
   /* Semantic Colors */
   --color-success: #10b981;     /* Green for positive metrics */
   --color-success-light: #d1fae5;
@@ -74,6 +83,7 @@
   --bg-secondary: var(--color-charcoal-50);
   --bg-tertiary: var(--color-charcoal-100);
   --bg-hover: var(--color-charcoal-200);
+  --bg-elevated: var(--color-white);
   
   --text-primary: var(--color-charcoal-900);
   --text-secondary: var(--color-charcoal-600);
@@ -244,6 +254,7 @@ html.dark {
   --bg-secondary: var(--color-dark-bg-secondary);
   --bg-tertiary: var(--color-dark-bg-tertiary);
   --bg-hover: var(--color-dark-bg-hover);
+  --bg-elevated: var(--color-dark-bg-tertiary);
   
   --text-primary: var(--color-dark-text-primary);
   --text-secondary: var(--color-dark-text-secondary);
