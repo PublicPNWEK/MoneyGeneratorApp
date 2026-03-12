@@ -34,6 +34,31 @@
   margin-top: 0.25rem;
 }
 
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.35rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.meta-item.verified {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
 .job-pay {
   background-color: #ecfdf5;
   color: #047857;
@@ -86,4 +111,72 @@
   background-color: #f3f4f6;
   color: #e53e3e;
   border: 1px solid #fed7d7;
+}
+
+.job-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.perk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #ecfeff;
+  color: #0ea5e9;
+  padding: 0.3rem 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid #bae6fd;
+  font-size: 0.8rem;
+}
+
+.job-shift {
+  background: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.job-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-outline,
+.btn-apply {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover,
+.btn-apply:hover {
+  transform: translateY(-1px);
+}
+
+.btn-apply {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.btn-outline.is-active {
+  border-color: #667eea;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+.btn-apply.is-active {
+  background: #16a34a;
+  border-color: #16a34a;
 }

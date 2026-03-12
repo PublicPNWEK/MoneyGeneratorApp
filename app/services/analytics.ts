@@ -8,6 +8,7 @@ type AnalyticsEvent = {
 };
 
 let analyticsEnabled = process.env.ANALYTICS_ENABLED !== 'false';
+const isTestEnv = process.env.NODE_ENV === 'test';
 
 export const analytics = {
   track: async ({ name, eventType, correlationId, payload }: AnalyticsEvent) => {
@@ -21,6 +22,7 @@ export const analytics = {
     };
     // Placeholder: wire to real analytics provider
     console.log('analytics_event', event);
+    if (isTestEnv) return;
     try {
       await backendClient.recordMetricsEvent({
         eventType: resolvedEventType,

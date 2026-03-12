@@ -6,6 +6,8 @@
 [build.environment]
   NODE_VERSION = "20"
   CI = "true"
+  # V2 Feature flags
+  VITE_V2_ENABLED = "true"
 
 # Development context
 [context.deploy-preview]
@@ -13,6 +15,7 @@
 
 [context.deploy-preview.environment]
   VITE_API_URL = "https://staging-api.moneygenerator.app"
+  VITE_V2_ENABLED = "true"
 
 # Production context
 [context.production]
@@ -20,11 +23,18 @@
 
 [context.production.environment]
   VITE_API_URL = "https://api.moneygenerator.app"
+  VITE_V2_ENABLED = "true"
 
 # API proxy for backend services
 [[redirects]]
-  from = "/api/*"
-  to = "${VITE_API_URL}/api/:splat"
+  from = "/api/v1/*"
+  to = "${VITE_API_URL}/api/v1/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/v2/*"
+  to = "${VITE_API_URL}/api/v2/:splat"
   status = 200
   force = true
 

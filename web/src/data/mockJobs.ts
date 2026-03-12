@@ -15,6 +15,14 @@ export interface Job {
   tags: string[];
   postedAt: string;
   urgency?: 'high' | 'medium' | 'low';
+  distanceMiles?: number;
+  rating?: number;
+  responseTime?: string;
+  verified?: boolean;
+  shifts?: string;
+  perks?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export const MOCK_JOBS: Job[] = [
@@ -26,7 +34,15 @@ export const MOCK_JOBS: Job[] = [
     location: { city: 'Downtown', distance: '1.2 mi' },
     tags: ['Delivery', 'Flexible'],
     postedAt: '2026-03-12T08:00:00Z',
-    urgency: 'high'
+    urgency: 'high',
+    distanceMiles: 1.2,
+    rating: 4.8,
+    responseTime: 'Responds in 1h',
+    verified: true,
+    shifts: '9a - 3p • Same-day',
+    perks: ['Tips eligible', 'Peak pay +$6'],
+    latitude: 37.779,
+    longitude: -122.419,
   },
   {
     id: '2',
@@ -36,7 +52,14 @@ export const MOCK_JOBS: Job[] = [
     location: { city: 'Westside', distance: '3.5 mi' },
     tags: ['Pets', 'Outdoor'],
     postedAt: '2026-03-12T09:30:00Z',
-    urgency: 'medium'
+    urgency: 'medium',
+    distanceMiles: 3.5,
+    rating: 4.6,
+    responseTime: 'Responds in 2h',
+    shifts: '11a • 60 min',
+    perks: ['Repeat client bonus'],
+    latitude: 37.759,
+    longitude: -122.447,
   },
   {
     id: '3',
@@ -46,6 +69,14 @@ export const MOCK_JOBS: Job[] = [
     location: { city: 'Convention Center', distance: '5.0 mi' },
     tags: ['Hospitality', 'Shift'],
     postedAt: '2026-03-11T14:15:00Z',
+    distanceMiles: 5,
+    rating: 4.7,
+    responseTime: 'Same-day',
+    verified: true,
+    shifts: 'Fri • 5p - 11p',
+    perks: ['Free meal', 'Tip share'],
+    latitude: 37.784,
+    longitude: -122.401,
   },
   {
     id: '4',
@@ -55,7 +86,15 @@ export const MOCK_JOBS: Job[] = [
     location: { city: 'Metro Area', distance: '0.5 mi' },
     tags: ['Driving', 'Passenger'],
     postedAt: '2026-03-12T10:00:00Z',
-    urgency: 'low'
+    urgency: 'low',
+    distanceMiles: 0.5,
+    rating: 4.9,
+    responseTime: 'Instant',
+    verified: true,
+    shifts: 'Anytime • Surge nearby',
+    perks: ['Quest bonus', 'Surge boost'],
+    latitude: 37.804,
+    longitude: -122.271,
   },
   {
     id: '5',
@@ -65,5 +104,12 @@ export const MOCK_JOBS: Job[] = [
     location: { city: 'North Warehouse', distance: '8.2 mi' },
     tags: ['Logistics', 'Heavy Lifting'],
     postedAt: '2026-03-10T09:00:00Z',
+    distanceMiles: 8.2,
+    rating: 4.3,
+    responseTime: 'Responds in 4h',
+    shifts: 'Thu • 2p - 6p',
+    perks: ['Fuel stipend'],
+    latitude: 37.732,
+    longitude: -122.20,
   }
 ];

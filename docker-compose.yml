@@ -1,0 +1,111 @@
+version: '3.9'
+
+services:
+  # Backend API server
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: moneygenerator-api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      LOG_LEVEL: info
+      CORS_ORIGIN: "http://localhost:3000,http://localhost:5173,https://moneygenerator.app"
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 100
+      RATE_LIMIT_WEBHOOK_MAX: 1000
+      # Feature flags
+      FEATURE_V2_ENABLED: "true"
+      # Database (if needed)
+      DATABASE_URL: "postgresql://user:password@db:5432/moneygenerator"
+      # Payment providers
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      # Third-party integrations
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID:-}
+      PLAID_SECRET: ${PLAID_SECRET:-}
+      PLAID_ENV: sandbox
+      # Cache
+      REDIS_URL: "redis://cache:6379"
+    depends_on:
+      - cache
+      # - db  # Uncomment when database is implemented
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - moneygenerator
+
+  # Redis cache
+  cache:
+    image: redis:7-alpine
+    container_name: moneygenerator-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-moneygenerator}
+    volumes:
+      - cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - moneygenerator
+
+  # PostgreSQL database (optional, for future use)
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: moneygenerator-db
+  #   environment:
+  #     POSTGRES_USER: user
+  #     POSTGRES_PASSWORD: password
+  #     POSTGRES_DB: moneygenerator
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U user"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - moneygenerator
+
+  # Web app (optional for local development)
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    container_name: moneygenerator-web
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:4000"
+      VITE_V2_ENABLED: "true"
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - moneygenerator
+
+volumes:
+  cache-data:
+  # db-data:
+
+networks:
+  moneygenerator:
+    driver: bridge

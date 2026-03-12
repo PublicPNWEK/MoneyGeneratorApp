@@ -10,6 +10,7 @@ import { ProductsPage } from './pages/ProductsPage';
 import { JobsPage } from './pages/JobsPage';
 import { TeamPage } from './pages/TeamPage';
 import { SettingsPage } from './pages/SettingsPage';
+import './design-system.css';
 import './App.css';
 
 const AppRoutes = () => {
@@ -53,7 +54,15 @@ const AppRoutes = () => {
       {isCheckoutOpen && (
         <Checkout
           currentPlan={userProfile.subscription || undefined}
-          onSelectPlan={(planId, _cycle, addons) => upgradeSubscription(planId, addons)}
+          onSelectPlan={(planId, cycle, addons, payment) =>
+            upgradeSubscription(planId, addons, {
+              billingCycle: cycle,
+              paymentMethod: payment.method,
+              savedMethodId: payment.savedMethodId,
+              autoRetry: payment.autoRetry,
+              rememberMethod: payment.rememberMethod,
+            })
+          }
           onClose={closeCheckout}
         />
       )}

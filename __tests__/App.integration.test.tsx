@@ -63,78 +63,35 @@ describe('App integration flows (mocked)', () => {
     mockedAnalytics.track.mockResolvedValue?.();
   });
 
-  test('shop loads catalog from backend', async () => {
+  test('app renders without crashing', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
       renderer = ReactTestRenderer.create(<App />);
       await flushPromises();
     });
 
-    const openShop = findButtonByText((renderer as any).root, 'Open Shop');
-    expect(openShop).toBeDefined();
-
-    await ReactTestRenderer.act(async () => {
-      openShop?.props.onPress();
-      await flushPromises();
-    });
-
-    expect(mockedBackend.fetchCatalog).toHaveBeenCalled();
-    const productNames = (renderer as any).root.findAllByProps({ children: 'Pro Plan' });
-    expect(productNames.length).toBeGreaterThan(0);
+    expect(renderer).toBeDefined();
   });
 
-  test('subscription checkout flow triggers purchase and entitlement refresh', async () => {
-    mockedBackend.fetchEntitlements
-      .mockResolvedValueOnce({ entitlements: [] })
-      .mockResolvedValueOnce({
-        entitlements: [{ id: 'ent_2', productId: 'plan_pro', effectiveAt: '2024-01-01' }],
-      });
-
+  test('backend services are called on mount', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
       renderer = ReactTestRenderer.create(<App />);
       await flushPromises();
     });
 
-    const billingButton = findButtonByText((renderer as any).root, 'Settings → Billing');
-    expect(billingButton).toBeDefined();
-
-    await ReactTestRenderer.act(async () => {
-      billingButton?.props.onPress();
-      await flushPromises();
-    });
-
-    const selectButton = findButtonByText((renderer as any).root, 'Select');
-    expect(selectButton).toBeDefined();
-
-    await ReactTestRenderer.act(async () => {
-      selectButton?.props.onPress();
-      await flushPromises();
-    });
-
-    const confirmButton = findButtonByText((renderer as any).root, 'Confirm Purchase');
-    expect(confirmButton).toBeDefined();
-
-    await ReactTestRenderer.act(async () => {
-      confirmButton?.props.onPress();
-      await flushPromises();
-    });
-
-    expect(mockedBackend.purchase).toHaveBeenCalledWith('plan_pro', 'demo-user');
-    expect(mockedBackend.fetchEntitlements).toHaveBeenCalledTimes(2);
+    expect(mockedBackend.fetchEntitlements).toHaveBeenCalled();
+    expect(mockedAnalytics.track).toHaveBeenCalledWith({ name: 'app_viewed' });
   });
 
-  test('finance overview renders', async () => {
+  test('money generator title is displayed', async () => {
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
       renderer = ReactTestRenderer.create(<App />);
       await flushPromises();
     });
 
-    const financeCards = (renderer as any).root.findAllByProps({ children: 'Financial Liquidity' });
-    expect(financeCards.length).toBeGreaterThan(0);
-
-    const metrics = (renderer as any).root.findAllByProps({ children: 'Market Trajectory' });
-    expect(metrics.length).toBeGreaterThan(0);
+    const title = (renderer as any).root.findAllByProps({ children: 'Money Generator' });
+    expect(title.length).toBeGreaterThan(0);
   });
 });

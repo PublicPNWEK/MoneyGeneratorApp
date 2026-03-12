@@ -2,6 +2,20 @@ import { useState } from 'react';
 import './Checkout.css';
 
 type BillingCycle = 'monthly' | 'annual';
+type PaymentMethod = 'card' | 'paypal' | 'crypto' | 'saved';
+
+type PaymentDetails = {
+  method: PaymentMethod;
+  savedMethodId?: string;
+  autoRetry: boolean;
+  rememberMethod: boolean;
+  card?: {
+    name: string;
+    number: string;
+    expiry: string;
+    cvc: string;
+  };
+};
 
 interface Plan {
   id: string;
@@ -82,9 +96,14 @@ const ADDONS: Addon[] = [
   },
 ];
 
+const SAVED_METHODS = [
+  { id: 'pm_card_4242', label: 'Visa •••• 4242', type: 'card', expiry: '11/28' },
+  { id: 'pm_apple_pay', label: 'Apple Pay (Keith)', type: 'wallet' },
+];
+
 interface CheckoutProps {
   currentPlan?: string;
-  onSelectPlan: (planId: string, cycle: BillingCycle, addons: string[]) => void;
+  onSelectPlan: (planId: string, cycle: BillingCycle, addons: string[], payment: PaymentDetails) => void;
   onClose: () => void;
 }
 
@@ -93,6 +112,14 @@ export function Checkout({ currentPlan, onSelectPlan, onClose }: CheckoutProps) 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [step, setStep] = useState<'plan' | 'addons' | 'confirm'>('plan');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [selectedSavedMethod, setSelectedSavedMethod] = useState<string>(SAVED_METHODS[0]?.id || '');
+  const [autoRetry, setAutoRetry] = useState(true);
+  const [rememberMethod, setRememberMethod] = useState(true);
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
 
   const annualSavings = Math.round(((14.99 * 12 - 119.88) / (14.99 * 12)) * 100);
 
@@ -139,9 +166,22 @@ export function Checkout({ currentPlan, onSelectPlan, onClose }: CheckoutProps) 
   };
 
   const handleConfirm = () => {
-    if (selectedPlan) {
-      onSelectPlan(selectedPlan, billingCycle, selectedAddons);
-    }
+    if (!selectedPlan) return;
+
+    const payment: PaymentDetails = {
+      method: paymentMethod,
+      savedMethodId: selectedSavedMethod,
+      autoRetry,
+      rememberMethod,
+      card: paymentMethod === 'card' ? {
+        name: cardName,
+        number: cardNumber,
+        expiry: cardExpiry,
+        cvc: cardCvc,
+      } : undefined,
+    };
+
+    onSelectPlan(selectedPlan, billingCycle, selectedAddons, payment);
   };
 
   return (
@@ -270,6 +310,141 @@ export function Checkout({ currentPlan, onSelectPlan, onClose }: CheckoutProps) 
                 <div className="summary-total">
                   <span>Total</span>
                   <span>${calculateTotal().toFixed(2)}/mo</span>
+                </div>
+              </div>
+              <div className="payment-section">
+                <div className="payment-header">
+                  <div>
+                    <h3>Payment Method</h3>
+                    <p className="payment-hint">Choose how you'd like to pay and we will remember your preference.</p>
+                  </div>
+                  <label className="remember-toggle">
+                    <input
+                      type="checkbox"
+                      checked={rememberMethod}
+                      onChange={(e) => setRememberMethod(e.target.checked)}
+                    />
+                    <span>Save method for future</span>
+                  </label>
+                </div>
+                <div className="payment-options">
+                  <button
+                    type="button"
+                    className={`payment-chip ${paymentMethod === 'card' ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod('card')}
+                  >
+                    💳 Card
+                  </button>
+                  <button
+                    type="button"
+                    className={`payment-chip ${paymentMethod === 'paypal' ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod('paypal')}
+                  >
+                    🅿️ PayPal
+                  </button>
+                  <button
+                    type="button"
+                    className={`payment-chip ${paymentMethod === 'crypto' ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod('crypto')}
+                  >
+                    ₿ Crypto
+                  </button>
+                  <button
+                    type="button"
+                    className={`payment-chip ${paymentMethod === 'saved' ? 'active' : ''}`}
+                    onClick={() => setPaymentMethod('saved')}
+                  >
+                    ⭐ Saved
+                  </button>
+                </div>
+
+                {paymentMethod === 'saved' && (
+                  <div className="saved-methods">
+                    {SAVED_METHODS.map((method) => (
+                      <label key={method.id} className={`saved-method ${selectedSavedMethod === method.id ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="saved-method"
+                          checked={selectedSavedMethod === method.id}
+                          onChange={() => setSelectedSavedMethod(method.id)}
+                        />
+                        <div>
+                          <div className="saved-label">{method.label}</div>
+                          {method.expiry && <div className="saved-meta">Exp {method.expiry}</div>}
+                        </div>
+                      </label>
+                    ))}
+                    {SAVED_METHODS.length === 0 && (
+                      <div className="empty-saved">No saved methods yet</div>
+                    )}
+                  </div>
+                )}
+
+                {paymentMethod === 'card' && (
+                  <div className="card-form">
+                    <div className="form-row">
+                      <label>
+                        Name on card
+                        <input
+                          type="text"
+                          value={cardName}
+                          onChange={(e) => setCardName(e.target.value)}
+                          placeholder="Your name"
+                        />
+                      </label>
+                    </div>
+                    <div className="form-row">
+                      <label>
+                        Card number
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(e.target.value)}
+                          placeholder="4242 4242 4242 4242"
+                        />
+                      </label>
+                    </div>
+                    <div className="form-grid">
+                      <label>
+                        Expiry
+                        <input
+                          type="text"
+                          value={cardExpiry}
+                          onChange={(e) => setCardExpiry(e.target.value)}
+                          placeholder="MM/YY"
+                        />
+                      </label>
+                      <label>
+                        CVC
+                        <input
+                          type="text"
+                          value={cardCvc}
+                          onChange={(e) => setCardCvc(e.target.value)}
+                          placeholder="123"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'paypal' && (
+                  <div className="payment-note">You'll be redirected to PayPal to complete this purchase.</div>
+                )}
+
+                {paymentMethod === 'crypto' && (
+                  <div className="payment-note">We support USDC and BTC. A payment link will be generated on confirmation.</div>
+                )}
+
+                <div className="payment-footer">
+                  <label className="checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={autoRetry}
+                      onChange={(e) => setAutoRetry(e.target.checked)}
+                    />
+                    <span>Auto-retry failed renewals after 24 hours</span>
+                  </label>
                 </div>
               </div>
               <div className="trust-signals">

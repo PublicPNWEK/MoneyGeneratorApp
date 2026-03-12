@@ -1,32 +1,173 @@
-import React, { useState } from 'react';
-import { Briefcase, Search, Filter } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Briefcase, Search, Bell, MapPin, Star, DollarSign } from 'lucide-react';
 import { JobCard } from '../components/JobCard';
+import { JobMap } from '../components/JobMap';
 import { MOCK_JOBS, Job } from '../data/mockJobs';
 import { useToast } from '../components/Toast';
 
 export const JobsPage: React.FC = () => {
-  const [searchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [minPay, setMinPay] = useState(20);
+  const [maxDistance, setMaxDistance] = useState(15);
+  const [minRating, setMinRating] = useState(4.5);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [jobStatus, setJobStatus] = useState<Record<string, 'saved' | 'applied'>>({});
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
   const { showToast } = useToast();
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+  // Load persisted preferences
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/profile/settings?userId=demo-user`);
+        const payload = await res.json();
+        const prefs = payload.settings?.jobPreferences || {};
+        if (prefs.status) setJobStatus(prefs.status);
+        if (typeof prefs.alertsEnabled === 'boolean') setAlertsEnabled(prefs.alertsEnabled);
+      } catch {
+        const saved = localStorage.getItem('jobs_status');
+        const alerts = localStorage.getItem('jobs_alerts_enabled');
+        if (saved) {
+          try {
+            setJobStatus(JSON.parse(saved));
+          } catch {
+            // ignore parse errors
+          }
+        }
+        if (alerts) setAlertsEnabled(alerts === 'true');
+      }
+
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/notifications/preferences?userId=demo-user`);
+        if (res.ok) {
+          const data = await res.json();
+          const jobPref = data.preferences?.new_job_match;
+          if (jobPref && typeof jobPref.push === 'boolean') {
+            setAlertsEnabled(jobPref.push);
+          }
+        }
+      } catch {
+        // best-effort load
+      }
+    };
+
+    loadPreferences();
+  }, [apiUrl]);
+
+  // Persist preferences
+  useEffect(() => {
+    localStorage.setItem('jobs_status', JSON.stringify(jobStatus));
+  }, [jobStatus]);
+
+  useEffect(() => {
+    localStorage.setItem('jobs_alerts_enabled', alertsEnabled ? 'true' : 'false');
+  }, [alertsEnabled]);
+
+  const persistJobPreferences = useCallback(async (nextStatus: Record<string, 'saved' | 'applied'>, nextAlerts: boolean) => {
+    try {
+      await fetch(`${apiUrl}/api/v1/profile/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'demo-user',
+          settings: {
+            jobPreferences: {
+              status: nextStatus,
+              alertsEnabled: nextAlerts,
+            },
+          },
+        }),
+      });
+    } catch {
+      // best-effort persistence
+    }
+  }, [apiUrl]);
+
+  const syncNotificationPreference = useCallback(async (nextAlerts: boolean) => {
+    try {
+      await fetch(`${apiUrl}/api/v1/notifications/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'demo-user',
+          preferences: {
+            new_job_match: { push: nextAlerts, email: false, sms: false },
+          },
+        }),
+      });
+    } catch {
+      // ignore network errors
+    }
+  }, [apiUrl]);
 
   const handleApply = (job: Job) => {
-      showToast(`Applied to ${job.title} at ${job.company}!`, 'success');
+    setJobStatus((prev) => {
+      const next = { ...prev, [job.id]: 'applied' };
+      persistJobPreferences(next, alertsEnabled);
+      return next;
+    });
+    showToast(`Applied to ${job.title} at ${job.company}!`, 'success');
   };
 
-  const filteredJobs = MOCK_JOBS.filter(job => {
+  const handleSave = (job: Job) => {
+    const wasSaved = jobStatus[job.id] === 'saved';
+    setJobStatus((prev) => {
+      const next = { ...prev };
+      if (next[job.id] === 'saved') {
+        delete next[job.id];
+      } else {
+        next[job.id] = 'saved';
+      }
+      persistJobPreferences(next, alertsEnabled);
+      return next;
+    });
+    showToast(`${job.title} ${wasSaved ? 'removed from saved' : 'saved for later'}`, 'info');
+  };
+
+  const toggleAlerts = () => {
+    setAlertsEnabled((prev) => {
+      const next = !prev;
+      persistJobPreferences(jobStatus, next);
+      syncNotificationPreference(next);
+      showToast(next ? 'Job alerts enabled' : 'Job alerts paused', 'info');
+      return next;
+    });
+  };
+
+  const filteredJobs = useMemo(() => MOCK_JOBS.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           job.company.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || job.urgency === filterType || (filterType === 'delivery' && job.tags.includes('Delivery'));
-    return matchesSearch && matchesFilter;
-  });
+    const matchesPay = job.pay.amount >= minPay;
+    const matchesDistance = job.distanceMiles ? job.distanceMiles <= maxDistance : true;
+    const matchesRating = job.rating ? job.rating >= minRating : true;
+    return matchesSearch && matchesFilter && matchesPay && matchesDistance && matchesRating;
+  }), [filterType, maxDistance, minPay, minRating, searchTerm]);
 
   return (
     <div className="jobs-page">
       <header className="page-header">
         <h2>Find Jobs</h2>
-        <div className="actions">
-          <button className="btn-icon"><Search size={20} /></button>
-          <button className="btn-icon"><Filter size={20} /></button>
+        <div className="actions" style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="search-box">
+            <Search size={16} />
+            <input
+              type="search"
+              placeholder="Search jobs or companies"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="view-toggle">
+            <button className={`toggle-chip ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
+              List
+            </button>
+            <button className={`toggle-chip ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
+              <MapPin size={14} /> Map
+            </button>
+          </div>
         </div>
       </header>
 
@@ -34,12 +175,48 @@ export const JobsPage: React.FC = () => {
           <button className={`filter-chip ${filterType === 'all' ? 'active' : ''}`} onClick={() => setFilterType('all')}>All</button>
           <button className={`filter-chip ${filterType === 'high' ? 'active' : ''}`} onClick={() => setFilterType('high')}>Urgent</button>
           <button className={`filter-chip ${filterType === 'delivery' ? 'active' : ''}`} onClick={() => setFilterType('delivery')}>Delivery</button>
+          <button className={`filter-chip ${filterType === 'medium' ? 'active' : ''}`} onClick={() => setFilterType('medium')}>Good fit</button>
+          <button className={`filter-chip ${filterType === 'low' ? 'active' : ''}`} onClick={() => setFilterType('low')}>Flexible</button>
+      </div>
+
+      <div className="advanced-filters">
+        <div className="filter-row">
+          <label>
+            <span><DollarSign size={14} /> Min pay (${minPay}/hr)</span>
+            <input type="range" min={0} max={80} step={5} value={minPay} onChange={(e) => setMinPay(Number(e.target.value))} />
+          </label>
+          <label>
+            <span><MapPin size={14} /> Max distance ({maxDistance} mi)</span>
+            <input type="range" min={1} max={50} step={1} value={maxDistance} onChange={(e) => setMaxDistance(Number(e.target.value))} />
+          </label>
+          <label>
+            <span><Star size={14} /> Min rating ({minRating}+)</span>
+            <input type="range" min={3} max={5} step={0.1} value={minRating} onChange={(e) => setMinRating(Number(e.target.value))} />
+          </label>
+        </div>
+        <div className="alerts-card">
+          <div>
+            <p className="alert-title"><Bell size={16} /> Smart alerts</p>
+            <p className="alert-body">Get notified for high-paying gigs near you and roles matching your tags.</p>
+          </div>
+          <button className="btn-secondary" onClick={toggleAlerts}>{alertsEnabled ? 'Pause alerts' : 'Enable alerts'}</button>
+        </div>
       </div>
       
-      {filteredJobs.length > 0 ? (
+      {viewMode === 'map' ? (
+        <div className="map-view" style={{ padding: '0 1rem 1rem' }}>
+          <JobMap jobs={filteredJobs} />
+        </div>
+      ) : filteredJobs.length > 0 ? (
         <div className="job-list" style={{ padding: '0 1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {filteredJobs.map(job => (
-             <JobCard key={job.id} job={job} onClick={handleApply} />
+             <JobCard
+               key={job.id}
+               job={job}
+               status={jobStatus[job.id] || null}
+               onApply={handleApply}
+               onSave={handleSave}
+             />
           ))}
         </div>
       ) : (
@@ -65,6 +242,95 @@ export const JobsPage: React.FC = () => {
             background-color: #2563eb;
             color: white;
             border-color: #2563eb;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+        }
+        .search-box input {
+            border: none;
+            outline: none;
+            background: transparent;
+            min-width: 180px;
+        }
+        .view-toggle {
+            display: inline-flex;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .toggle-chip {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+            color: #475569;
+        }
+        .toggle-chip.active {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+        .advanced-filters {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 0 1rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.75rem;
+        }
+        .filter-row label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            color: #1f2937;
+        }
+        .alerts-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            background: #f8fafc;
+            border: 1px dashed #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+        }
+        .alert-title {
+            display: flex;
+            gap: 0.35rem;
+            align-items: center;
+            font-weight: 700;
+            margin: 0;
+            color: #1f2937;
+        }
+        .alert-body {
+            margin: 0.15rem 0 0;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+        .map-placeholder {
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 2rem;
+            color: #1f2937;
+            text-align: center;
+            margin: 0 1rem;
         }
       `}</style>
     </div>

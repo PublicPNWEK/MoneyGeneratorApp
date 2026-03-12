@@ -156,6 +156,10 @@ export const UserProfileService = {
       earningsGoalNotifications: true,
       weekStartsOn: 'sunday',
       defaultPlatform: null,
+      jobPreferences: {
+        status: {},
+        alertsEnabled: true,
+      },
     };
   },
 

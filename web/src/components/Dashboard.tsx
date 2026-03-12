@@ -118,6 +118,31 @@ export function Dashboard({
 
   const allComplete = progressSteps.every((s) => s.completed);
 
+  const aiInsights = [
+    {
+      title: 'Best time to work',
+      detail: 'Monday 5-9pm shows +24% surge near Downtown.',
+      cta: 'View surge map',
+    },
+    {
+      title: 'Expense to trim',
+      detail: 'Subscription “Fuel Saver Plus” unused 21 days. Save $12/mo.',
+      cta: 'Review and cancel',
+    },
+    {
+      title: 'Tax reserve check',
+      detail: 'You are pacing $38 under weekly tax target. Move $38 today.',
+      cta: 'Adjust reserve',
+    },
+  ];
+
+  const healthScore = 82;
+  const healthSignals = [
+    { label: 'Cash flow', value: '+$420 this week', status: 'positive' },
+    { label: 'Savings runway', value: '6.2 months', status: 'neutral' },
+    { label: 'Goal progress', value: '68% to weekly target', status: 'positive' },
+  ];
+
   return (
     <div className="dashboard">
       {!allComplete && (
@@ -139,6 +164,45 @@ export function Dashboard({
         />
         <StatCard icon="📊" label="Active Gigs" value="3" />
         <StatCard icon="🎯" label="Goal Progress" value="68%" />
+      </div>
+
+      <div className="health-grid">
+        <div className="health-card">
+          <div className="health-score">
+            <span className="score-label">Financial Health</span>
+            <span className="score-value">{healthScore}</span>
+          </div>
+          <div className="score-meter">
+            <div className="score-fill" style={{ width: `${healthScore}%` }} />
+          </div>
+          <div className="signal-list">
+            {healthSignals.map((signal) => (
+              <div key={signal.label} className={`signal-row ${signal.status}`}>
+                <span>{signal.label}</span>
+                <strong>{signal.value}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="insights-card">
+          <div className="insights-header">
+            <div>
+              <h4>AI Insights</h4>
+              <p>Personalized tips based on your shifts, spend, and goals.</p>
+            </div>
+            <button className="btn-secondary" onClick={onViewAnalytics}>View report</button>
+          </div>
+          <div className="insights-grid">
+            {aiInsights.map((insight) => (
+              <div key={insight.title} className="insight-card">
+                <h5>{insight.title}</h5>
+                <p>{insight.detail}</p>
+                <button className="btn-link">{insight.cta}</button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="quick-actions">

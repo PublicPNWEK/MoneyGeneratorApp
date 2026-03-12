@@ -355,6 +355,156 @@
   font-size: 0.9rem;
 }
 
+.payment-section {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+}
+
+.payment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.payment-header h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.payment-hint {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+.payment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.payment-chip {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.payment-chip.active {
+  border-color: #667eea;
+  background: #eef2ff;
+  color: #312e81;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
+}
+
+.saved-methods {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.saved-method {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+  background: #f9fafb;
+}
+
+.saved-method.selected {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.saved-label {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.saved-meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.empty-saved {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-row label,
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-row input,
+.form-grid input {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  font-size: 0.95rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.payment-note {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  border: 1px dashed #d1d5db;
+}
+
+.payment-footer {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #374151;
+}
+
+.remember-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
 /* Footer */
 .checkout-footer {
   display: flex;

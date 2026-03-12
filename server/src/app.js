@@ -14,6 +14,7 @@ import { cacheMiddleware, cacheUtils } from './cache.js';
 import { validate, validateQuery, schemas } from './validation.js';
 import { healthCheckMiddleware } from './shutdown.js';
 import apiRoutes from './routes/api.js';
+import v2Routes from './routes/v2.js';
 
 const app = express();
 
@@ -377,6 +378,9 @@ app.get('/metrics/rollup/daily', validateQuery(schemas.dailyRollup), cacheMiddle
 
 // Mount new API routes for gig platforms, advances, benefits, expenses, notifications, and profiles
 app.use('/api/v1', apiRoutes);
+
+// Mount V2 feature routes
+app.use('/api/v2', v2Routes);
 
 // Global error handler (must be last)
 app.use((err, req, res, next) => {

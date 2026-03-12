@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '../components/Toast';
 
+type BillingCycle = 'monthly' | 'annual';
+
+type UpgradeOptions = {
+  billingCycle?: BillingCycle;
+  paymentMethod?: string;
+  savedMethodId?: string;
+  autoRetry?: boolean;
+  rememberMethod?: boolean;
+};
+
 export type Product = {
   id: string;
   type: string;
@@ -30,7 +40,7 @@ interface AppContextType {
   openCheckout: () => void;
   closeCheckout: () => void;
   connectBank: () => void;
-  upgradeSubscription: (planId: string, addons: string[]) => void;
+  upgradeSubscription: (planId: string, addons: string[], options?: UpgradeOptions) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -105,7 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(`${apiUrl}/api/catalog`, { signal: controller.signal });
+      const response = await fetch(`${apiUrl}/catalog`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (response.ok) {
@@ -128,12 +138,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 1500);
   }, [showToast]);
 
-  const upgradeSubscription = useCallback((planId: string, addons: string[]) => {
+  const upgradeSubscription = useCallback(async (planId: string, addons: string[], options: UpgradeOptions = {}) => {
+    const {
+      billingCycle = 'monthly',
+      paymentMethod = 'card',
+      savedMethodId,
+      autoRetry = true,
+      rememberMethod = true,
+    } = options;
     setIsCheckoutOpen(false);
-    setUserProfile((prev) => ({ ...prev, subscription: planId }));
-    const addonText = addons.length > 0 ? ` with ${addons.length} add-on(s)` : '';
-    showToast(`Subscribed to ${planId}${addonText}!`, 'success');
-  }, [showToast]);
+    try {
+      const response = await fetch(`${apiUrl}/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer demo-user' },
+        body: JSON.stringify({
+          productId: planId,
+          userId: 'demo-user',
+          addons,
+          billingCycle,
+          paymentMethod,
+          savedMethodId,
+          autoRetry,
+          rememberMethod,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Checkout failed');
+      }
+      await response.json();
+      setUserProfile((prev) => ({ ...prev, subscription: planId }));
+      const addonText = addons.length > 0 ? ` with ${addons.length} add-on(s)` : '';
+      showToast(`Subscribed to ${planId}${addonText} (${billingCycle}).`, 'success');
+
+      // emit metrics (best effort)
+      fetch(`${apiUrl}/metrics/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'checkout.completed',
+          userId: 'demo-user',
+          properties: { planId, addons, billingCycle, paymentMethod, savedMethodId, autoRetry, rememberMethod },
+        }),
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+      showToast('Payment failed. Please try again.', 'error');
+    }
+  }, [apiUrl, showToast]);
 
   const openCheckout = () => setIsCheckoutOpen(true);
   const closeCheckout = () => setIsCheckoutOpen(false);

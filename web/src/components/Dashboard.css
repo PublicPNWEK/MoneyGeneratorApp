@@ -130,6 +130,94 @@
   color: #ef4444;
 }
 
+/* Health & Insights */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.health-card,
+.insights-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.health-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.score-label {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.score-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.score-meter {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #22c55e, #2563eb);
+}
+
+.signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.signal-row {
+  display: flex;
+  justify-content: space-between;
+  color: #334155;
+}
+
+.signal-row.positive strong { color: #16a34a; }
+.signal-row.neutral strong { color: #0ea5e9; }
+
+.insights-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.insights-header h4 { margin: 0; }
+.insights-header p { margin: 0.15rem 0 0; color: #475569; }
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.insight-card h5 { margin: 0 0 0.35rem; }
+.insight-card p { margin: 0; color: #475569; }
+
 /* Quick Actions */
 .quick-actions h3 {
   font-size: 1.1rem;
