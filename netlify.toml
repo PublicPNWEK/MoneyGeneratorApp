@@ -1,6 +1,6 @@
 [build]
 base = "web"
-command = "npm ci --omit=dev && npm run build"
+command = "npm ci && npm run build"
 publish = "dist"
 
 [build.environment]
@@ -21,7 +21,7 @@ VITE_V2_ENABLED = "true"
 
 # Production context - optimized
 [context.production]
-command = "npm ci --omit=dev && npm run build"
+command = "npm ci && npm run build"
 
 [context.production.environment]
 NODE_ENV = "production"
