@@ -102,17 +102,23 @@ export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
         },
       });
 
-      map.on('click', 'clusters', (e) => {
+      map.on('click', 'clusters', async (e) => {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ['clusters'],
         });
         const clusterId = features[0]?.properties?.cluster_id;
         const source = map.getSource('jobs') as GeoJSONSource;
         if (!clusterId || !source) return;
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err) return;
-          map.easeTo({ center: (features[0].geometry as any).coordinates as [number, number], zoom });
-        });
+        
+        try {
+          const zoom = await source.getClusterExpansionZoom(clusterId);
+          map.easeTo({ 
+            center: (features[0].geometry as any).coordinates as [number, number], 
+            zoom 
+          });
+        } catch (error) {
+           console.error('Error expanding cluster:', error);
+        }
       });
 
       map.on('click', 'unclustered-point', (e) => {
