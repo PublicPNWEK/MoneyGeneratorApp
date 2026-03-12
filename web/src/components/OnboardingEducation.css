@@ -779,7 +779,7 @@ body.dark .hint-description {
 
 .hint-dismiss:hover {
   background-color: var(--color-neutral-200, #e5e7eb);
-  color: var(--color-neutral-900, #111827;
+  color: var(--color-neutral-900, #111827);
 }
 
 body.dark .hint-dismiss:hover {
