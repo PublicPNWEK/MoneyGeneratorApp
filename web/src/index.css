@@ -13,19 +13,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* Design System - All colors, typography, spacing, animations */
-@import './designSystem.css';
+@import './styles/designSystem.css';
 
 /* Component Styles - Cards, buttons, forms, modals, toasts */
-@import './components.css';
+@import './styles/components.css';
 
 /* Layout - Header, sidebar, grid, responsive */
-@import './layout.css';
+@import './styles/layout.css';
 
 /* Mobile UX Components */
-@import './MobileComponents.css';
+@import './components/MobileComponents.css';
 
 /* Onboarding System */
-@import './OnboardingEducation.css';
+@import './components/OnboardingEducation.css';
 
 /* ========== GLOBAL OVERRIDES ========== */
 * {
