@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Briefcase, Search, Bell, MapPin, Star, DollarSign } from 'lucide-react';
+import { Briefcase, Search, Bell, MapPin, Star, DollarSign, TrendingUp, Wallet, Check } from 'lucide-react';
 import { JobCard } from '../components/JobCard';
 import { JobMap } from '../components/JobMap';
 import { MOCK_JOBS, Job } from '../data/mockJobs';
@@ -15,6 +15,7 @@ export const JobsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [jobStatus, setJobStatus] = useState<Record<string, 'saved' | 'applied'>>({});
   const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [showComparison, setShowComparison] = useState(false);
   const { showToast } = useToast();
   const { markTutorialWatched, user } = useOnboarding();
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -179,12 +180,21 @@ export const JobsPage: React.FC = () => {
   const filteredJobs = useMemo(() => MOCK_JOBS.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           job.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || job.urgency === filterType || (filterType === 'delivery' && job.tags.includes('Delivery'));
+    
+    let matchesFilter = false;
+    if (filterType === 'all') matchesFilter = true;
+    else if (filterType === 'delivery') matchesFilter = job.tags.includes('Delivery');
+    else if (filterType === 'survey') matchesFilter = job.tags.includes('Survey') || job.tags.includes('Testing');
+    else if (filterType === 'ai') matchesFilter = job.tags.includes('AI') || job.tags.includes('Tech');
+    else if (filterType === 'content') matchesFilter = job.tags.includes('Content') || job.tags.includes('Game');
+    else matchesFilter = job.urgency === filterType;
+
     const matchesPay = job.pay.amount >= minPay;
     const matchesDistance = job.distanceMiles ? job.distanceMiles <= maxDistance : true;
     const matchesRating = job.rating ? job.rating >= minRating : true;
     return matchesSearch && matchesFilter && matchesPay && matchesDistance && matchesRating;
   }), [filterType, maxDistance, minPay, minRating, searchTerm]);
+
 
   // Derive map center from the first filtered job or default to SF
   const mapCenter: [number, number] = useMemo(() => {
@@ -252,6 +262,9 @@ export const JobsPage: React.FC = () => {
           <button className={`badge ${filterType === 'all' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`} onClick={() => setFilterType('all')}>All</button>
           <button className={`badge ${filterType === 'high' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`} onClick={() => setFilterType('high')}>Urgent</button>
           <button className={`badge ${filterType === 'delivery' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'}`} onClick={() => setFilterType('delivery')}>Delivery</button>
+          <button className={`badge ${filterType === 'survey' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100'}`} onClick={() => setFilterType('survey')}>Surveys & Tasks</button>
+          <button className={`badge ${filterType === 'ai' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`} onClick={() => setFilterType('ai')}>AI & Tech</button>
+          <button className={`badge ${filterType === 'content' ? 'bg-pink-100 text-pink-700' : 'bg-gray-100'}`} onClick={() => setFilterType('content')}>Content & Games</button>
           <button className={`badge ${filterType === 'medium' ? 'bg-green-100 text-green-700' : 'bg-gray-100'}`} onClick={() => setFilterType('medium')}>Good fit</button>
           <button className={`badge ${filterType === 'low' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100'}`} onClick={() => setFilterType('low')}>Flexible</button>
       </div>
@@ -278,7 +291,43 @@ export const JobsPage: React.FC = () => {
           </div>
           <button className="btn-secondary" data-tour="alerts-toggle" onClick={toggleAlerts}>{alertsEnabled ? 'Pause alerts' : 'Enable alerts'}</button>
         </div>
+
+        <button 
+          className="btn-secondary"
+          onClick={() => setShowComparison(!showComparison)}
+          style={{ height: 'fit-content', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <TrendingUp size={16} /> Maximize Earnings
+        </button>
       </div>
+
+      {showComparison && (
+        <div className="comparison-tool" style={{ padding: '1rem', margin: '0 1rem 1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+          <h4 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+            <Wallet size={16} /> Platform Comparison (Scrimpr Data)
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div className="compare-card" style={{ background: 'white', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Survey Junkie</div>
+              <div style={{ color: '#16a34a', fontWeight: 700 }}>$12/hr avg</div>
+              <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Low threshold: $5.00</div>
+            </div>
+            <div className="compare-card" style={{ background: 'white', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>UserTesting</div>
+              <div style={{ color: '#16a34a', fontWeight: 700 }}>$60/hr avg</div>
+              <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Best for: Tech Tests</div>
+            </div>
+            <div className="compare-card" style={{ background: 'white', padding: '1rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Swagbucks</div>
+              <div style={{ color: '#16a34a', fontWeight: 700 }}>$8/hr avg</div>
+              <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Best for: Games</div>
+            </div>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+            * Rates based on user reports. Use Scrimpr to compare current offers.
+          </p>
+        </div>
+      )}
       
       {viewMode === 'map' ? (
         <div className="map-view" style={{ padding: '1rem' }}>

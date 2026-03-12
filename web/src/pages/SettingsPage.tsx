@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Shield, CreditCard, LogOut, Download, KeyRound } from 'lucide-react';
+import { Globe, Shield, CreditCard, LogOut, Download, KeyRound, Wallet } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
 import { GuidedTour, useTourNavigation, useOnboarding, EducationalHint } from '../utils/onboardingSystem';
@@ -11,6 +11,8 @@ export const SettingsPage: React.FC = () => {
     const [language, setLanguage] = useState('en-US');
     const [currency, setCurrency] = useState('USD');
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [payoutMethods, setPayoutMethods] = useState({ paypal: true, crypto: false, giftcard: false });
+    const [withdrawalThreshold, setWithdrawalThreshold] = useState('low');
     const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
     const [isExporting, setIsExporting] = useState(false);
     const [dismissedHints, setDismissedHints] = useState<string[]>([]);
@@ -195,6 +197,86 @@ export const SettingsPage: React.FC = () => {
             ) : (
               <button className="button secondary"><KeyRound size={14} /> Backup codes</button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Payout Preferences */}
+      <div className="card elevated" style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Wallet size={20} style={{ color: 'var(--color-emerald-600)' }} /> Payout Preferences
+          </h3>
+        </div>
+        
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div>
+            <label style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Preferred Payment Methods</label>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.paypal} 
+                  onChange={() => setPayoutMethods(p => ({...p, paypal: !p.paypal}))} 
+                /> 
+                PayPal
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.crypto} 
+                  onChange={() => setPayoutMethods(p => ({...p, crypto: !p.crypto}))} 
+                /> 
+                Crypto (BTC/ETH)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.giftcard} 
+                  onChange={() => setPayoutMethods(p => ({...p, giftcard: !p.giftcard}))} 
+                /> 
+                Gift Cards
+              </label>
+            </div>
+          </div>
+          
+          <div>
+            <label style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Minimum Withdrawal Threshold</label>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="low" 
+                  checked={withdrawalThreshold === 'low'} 
+                  onChange={() => setWithdrawalThreshold('low')} 
+                /> 
+                Low ($0.50 - $2)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="medium" 
+                  checked={withdrawalThreshold === 'medium'} 
+                  onChange={() => setWithdrawalThreshold('medium')} 
+                /> 
+                Standard ($5 - $20)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="high" 
+                  checked={withdrawalThreshold === 'high'} 
+                  onChange={() => setWithdrawalThreshold('high')} 
+                /> 
+                High ($20+)
+              </label>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              We'll highlight jobs that match your cashout preferences first.
+            </p>
           </div>
         </div>
       </div>
