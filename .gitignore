@@ -91,3 +91,6 @@ __tests__/
 
 # Metrics artifacts
 server/data/*.ndjson
+
+# Local Netlify folder
+.netlify
