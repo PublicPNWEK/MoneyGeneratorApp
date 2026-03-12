@@ -6,9 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
+    /* 
+    // PWA Temporarily Disabled for Netlify Deployment Stability
+    // The previous configuration was causing EISDIR errors during the build process
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: null, // Manually registering in main.tsx to avoid Netlify EISDIR error
+      injectRegister: null, 
       manifest: {
         name: 'Money Generator App',
         short_name: 'MoneyGen',
@@ -20,7 +23,7 @@ export default defineConfig({
         display: 'standalone',
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,png,svg,ico}'],
+        globPatterns: ['**\/*.{js,css,html,woff2,png,svg,ico}'],
         maximumFileSizeToCacheInBytes: 5000000,
         cleanupOutdatedCaches: true,
       },
@@ -28,6 +31,7 @@ export default defineConfig({
         enabled: false,
       },
     }),
+    */
   ],
 
   server: {
