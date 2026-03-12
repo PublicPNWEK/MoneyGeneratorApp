@@ -66,17 +66,68 @@ from = "/*"
 to = "/index.html"
 status = 200
 
-# HTML - short cache (no caching guidance)
+# ============================================
+# CLOUDFLARE CDN INTEGRATION HEADERS
+# ============================================
+
+# Global security headers (all paths)
+[[headers]]
+for = "/*"
+[headers.values]
+# Security headers
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "DENY"
+X-XSS-Protection = "1; mode=block"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+# Tell Cloudflare this content can be cached at edge
+CDN-Cache-Control = "public, max-age=86400"
+# Cloudflare-specific: Allow transformation
+CF-Edge-Cache = "cache, platform=cloudflare"
+
+# HTML pages - short Cloudflare edge cache, browser revalidation
 [[headers]]
 for = "/*.html"
 [headers.values]
-Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+Cache-Control = "public, max-age=0, must-revalidate"
+CDN-Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+Cloudflare-CDN-Cache-Control = "max-age=3600"
 
-# CSS/JS bundles - long cache with hash
+# index.html specifically
 [[headers]]
-for = "/assets/*.{css,js}"
+for = "/index.html"
+[headers.values]
+Cache-Control = "public, max-age=0, must-revalidate"
+CDN-Cache-Control = "public, max-age=1800"
+
+# CSS/JS bundles - immutable long cache (hashed filenames)
+[[headers]]
+for = "/assets/*"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
+CDN-Cache-Control = "public, max-age=31536000, immutable"
+
+# Static images - long cache
+[[headers]]
+for = "/*.{png,jpg,jpeg,gif,webp,svg,ico}"
+[headers.values]
+Cache-Control = "public, max-age=2592000"
+CDN-Cache-Control = "public, max-age=2592000"
+
+# Fonts - very long cache
+[[headers]]
+for = "/*.{woff,woff2,ttf,otf,eot}"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+CDN-Cache-Control = "public, max-age=31536000, immutable"
+Access-Control-Allow-Origin = "*"
+
+# API responses - no Cloudflare caching (dynamic)
+[[headers]]
+for = "/api/*"
+[headers.values]
+Cache-Control = "no-store, no-cache, must-revalidate"
+CDN-Cache-Control = "no-store"
 
 # Static assets
 [[headers]]
