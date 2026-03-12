@@ -72,7 +72,7 @@ class FeatureFlagsService {
     return Object.entries(this.flags).reduce((acc, [key, value]) => {
       acc[key] = {
         enabled: value.enabled,
-        %: value.rolloutPercent,
+        rolloutPercent: value.rolloutPercent,
         description: value.description,
       };
       return acc;

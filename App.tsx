@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -75,7 +75,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState<Product | null>(null);
 
   useEffect(() => {
-    backendClient.fetchEntitlements?.();
+    backendClient.fetchEntitlements?.('demo-user');
     analytics.track?.({ name: 'app_viewed' });
   }, []);
 
@@ -105,7 +105,7 @@ export default function App() {
     setLoading(true);
     try {
       await backendClient.purchase(selectedPlan.id, 'demo-user');
-      await backendClient.fetchEntitlements?.();
+      await backendClient.fetchEntitlements?.('demo-user');
       analytics.track?.({ name: 'purchase_completed', payload: { productId: selectedPlan.id } });
     } finally {
       setLoading(false);

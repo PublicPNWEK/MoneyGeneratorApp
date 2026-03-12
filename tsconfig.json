@@ -17,8 +17,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods", "web"],
-  "references": [
-    { "path": "./web/tsconfig.json" }
-  ]
+  "exclude": ["**/node_modules", "*/Pods", "web"]
 }
