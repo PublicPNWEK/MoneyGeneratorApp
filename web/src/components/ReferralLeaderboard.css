@@ -1,0 +1,173 @@
+/* ReferralLeaderboard Styles */
+
+.leaderboard-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.leaderboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.leaderboard-header .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.leaderboard-header svg {
+  color: var(--color-gold-500);
+}
+
+.leaderboard-period {
+  display: inline-block;
+  background: rgba(245, 166, 35, 0.15);
+  color: var(--color-gold-400);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.leaderboard-item {
+  display: grid;
+  grid-template-columns: 32px 40px 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+}
+
+.leaderboard-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: var(--color-emerald-500);
+}
+
+.leaderboard-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+}
+
+.leaderboard-rank .medal-gold {
+  color: var(--color-gold-500);
+}
+
+.leaderboard-rank .medal-silver {
+  color: #C0C0C0;
+}
+
+.leaderboard-rank .medal-bronze {
+  color: #CD7F32;
+}
+
+.leaderboard-rank .rank-number {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.leaderboard-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-emerald-600), var(--color-purple-600));
+}
+
+.leaderboard-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.leaderboard-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.leaderboard-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.leaderboard-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.leaderboard-reward {
+  text-align: right;
+}
+
+.reward-amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-emerald-400);
+}
+
+.reward-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.leaderboard-empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.leaderboard-footer {
+  padding: var(--space-3);
+  background: rgba(16, 185, 129, 0.1);
+  border-left: 3px solid var(--color-emerald-500);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  text-align: center;
+  margin-top: auto;
+}
+
+.leaderboard-footer p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .leaderboard-item {
+    grid-template-columns: 32px 1fr auto;
+    gap: var(--space-2);
+  }
+
+  .leaderboard-avatar {
+    display: none;
+  }
+
+  .reward-amount {
+    font-size: 1rem;
+  }
+}

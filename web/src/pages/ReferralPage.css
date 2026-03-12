@@ -1,0 +1,327 @@
+/* ReferralPage Styles - Modern Dark Dashboard Design with Optimizations */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.referral-page {
+  padding: var(--space-6);
+  background: var(--bg-primary);
+  min-height: 100vh;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Hero Section */
+.referral-hero {
+  position: relative;
+  padding: var(--space-8) var(--space-6);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(124, 58, 237, 0.08) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-8);
+  overflow: hidden;
+  animation: fadeInUp 0.6s ease-out 0.1s backwards;
+}
+
+.referral-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 212, 170, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--color-emerald-400);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: var(--space-4);
+  transition: all var(--transition-fast);
+}
+
+.hero-badge:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
+.referral-hero h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.referral-hero p {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.hero-decoration {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.decoration-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+.decoration-circle.cyan {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, var(--color-emerald-500), transparent);
+  top: -150px;
+  right: -150px;
+  animation: pulse-glow 3.5s ease-in-out infinite;
+}
+
+.decoration-circle.purple {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, var(--color-purple-500), transparent);
+  bottom: -125px;
+  left: -125px;
+  animation: pulse-glow 4s ease-in-out infinite 0.5s;
+}
+
+/* Grid Layout */
+.referral-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.referral-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.referral-col.left {
+  grid-column: 1;
+}
+
+.referral-col.right {
+  grid-column: 2;
+}
+
+/* Cards */
+.referral-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+}
+
+.referral-card:hover {
+  border-color: var(--color-emerald-500);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.card-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+/* Info Cards */
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.info-item {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.info-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--color-emerald-600), var(--color-emerald-500));
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.info-text {
+  flex: 1;
+}
+
+.info-text strong {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.info-text p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Benefits Card */
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.benefits-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.benefits-list svg {
+  color: var(--color-emerald-500);
+  flex-shrink: 0;
+}
+
+/* Loading State */
+.referral-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .referral-page {
+    padding: var(--space-4);
+  }
+
+  .referral-hero {
+    padding: var(--space-6) var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .referral-hero h1 {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+  }
+
+  .referral-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .referral-col.left {
+    grid-column: 1;
+  }
+
+  .referral-col.right {
+    grid-column: 1;
+  }
+
+  .referral-card {
+    padding: var(--space-4);
+  }
+
+  .info-item {
+    gap: var(--space-3);
+  }
+
+  .info-number {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .referral-page {
+    padding: var(--space-3);
+  }
+
+  .referral-hero {
+    padding: var(--space-4);
+  }
+
+  .hero-badge {
+    font-size: 0.8rem;
+  }
+
+  .referral-hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .referral-hero p {
+    font-size: 1rem;
+  }
+}
