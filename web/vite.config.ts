@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: null, // Manually registering in main.tsx to avoid Netlify EISDIR error
       manifest: {
         name: 'Money Generator App',
         short_name: 'MoneyGen',
