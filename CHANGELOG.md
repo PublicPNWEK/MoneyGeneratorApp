@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-12
+
+### Added
+- Personalized Onboarding Wizard implementation (Phase 1).
+- Dynamic role-based user flows:
+    - Freelancer: Connect platforms, link bank, set income goal.
+    - Business: Link bank, set revenue goal.
+    - Individual: Link bank, set savings goal.
+- User intent tracking and role persistence via Local Storage.
+- Global `UserRole` context management.
+- Complete visual overhaul of the onboarding process with responsive design.
+
+### Changed
+- Refactored `App.tsx` to support the new role selection handler.
+- Updated `AppContext` to include `useEntitlements`-like functionality for role management.
+
+### Fixed
+- Addressed minor TypeScript warnings in `JobsPage`.
+
 ## [1.0.0] - 2026-03-11
 
 ### Added
