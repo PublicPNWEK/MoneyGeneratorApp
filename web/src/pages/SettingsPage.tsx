@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Globe, Shield, CreditCard, LogOut, Download, KeyRound, Wallet } from 'lucide-react';
+import { Globe, Shield, CreditCard, LogOut, Download, KeyRound, Wallet, Moon, Sun } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
+import { useTheme } from '../context/ThemeContext';
 import { GuidedTour, useTourNavigation, useOnboarding, EducationalHint } from '../utils/onboardingSystem';
 import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
     const { userProfile, openCheckout } = useAppContext();
     const { showToast } = useToast();
+    const { theme, toggleTheme } = useTheme();
     const { markTutorialWatched, user } = useOnboarding();
     const [language, setLanguage] = useState('en-US');
     const [currency, setCurrency] = useState('USD');
@@ -163,12 +165,31 @@ export const SettingsPage: React.FC = () => {
           <h3>Preferences</h3>
         </div>
         <div className="settings-grid">
+          <div className="setting-row">
+            <div className="setting-info">
+              {theme === 'dark' ? <Moon size={20} className="setting-icon" /> : <Sun size={20} className="setting-icon" />}
+              <div>
+                <div className="setting-label">Appearance</div>
+                <div className="setting-value">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</div>
+              </div>
+            </div>
+            <label className="toggle-switch-label">
+              <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+              <span className="slider"></span>
+            </label>
+          </div>
+
           <div className="setting-input-group">
             <div className="setting-label-row">
               <Globe size={20} className="setting-icon" />
-              <label className="setting-label">Language</label>
+              <label htmlFor="setting-language" className="setting-label">Language</label>
             </div>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)} className="setting-select">
+            <select 
+              id="setting-language" 
+              value={language} 
+              onChange={(e) => setLanguage(e.target.value)} 
+              className="setting-select"
+            >
               <option value="en-US">English (US)</option>
               <option value="es-MX">Español (LatAm)</option>
               <option value="fr-FR">Français</option>
@@ -177,9 +198,14 @@ export const SettingsPage: React.FC = () => {
           <div className="setting-input-group">
             <div className="setting-label-row">
               <Globe size={20} className="setting-icon" />
-              <label className="setting-label">Currency</label>
+              <label htmlFor="setting-currency" className="setting-label">Currency</label>
             </div>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="setting-select">
+            <select 
+              id="setting-currency" 
+              value={currency} 
+              onChange={(e) => setCurrency(e.target.value)} 
+              className="setting-select"
+            >
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
               <option value="MXN">MXN</option>
