@@ -15,6 +15,7 @@ const AppRoutes = () => {
   const { 
     showOnboarding, 
     completeOnboarding, 
+    updateRole,
     isCheckoutOpen, 
     closeCheckout, 
     upgradeSubscription, 
@@ -27,6 +28,7 @@ const AppRoutes = () => {
       <OnboardingWizard
         onComplete={completeOnboarding}
         onConnectBank={connectBank}
+        onSelectRole={updateRole}
         onSelectPlan={(planId) => {
           upgradeSubscription(planId, []); 
         }}

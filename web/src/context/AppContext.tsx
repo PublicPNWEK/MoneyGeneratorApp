@@ -9,7 +9,10 @@ export type Product = {
   description: string;
 };
 
+export type UserRole = 'freelancer' | 'business' | 'individual' | null;
+
 export type UserProfile = {
+  role: UserRole;
   bankConnected: boolean;
   subscription: string | null;
   earnings: number;
@@ -22,6 +25,7 @@ interface AppContextType {
   apiConnected: boolean;
   isCheckoutOpen: boolean;
   showOnboarding: boolean;
+  updateRole: (role: UserRole) => void;
   completeOnboarding: () => void;
   openCheckout: () => void;
   closeCheckout: () => void;
@@ -57,6 +61,7 @@ const DEMO_PRODUCTS: Product[] = [
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<UserProfile>({
+    role: null,
     bankConnected: false,
     subscription: null,
     earnings: 2847,
@@ -74,8 +79,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const onboardingComplete = localStorage.getItem('onboarding_complete');
     if (!onboardingComplete) {
       setShowOnboarding(true);
+    } else {
+        const storedRole = localStorage.getItem('user_role') as UserRole;
+        if (storedRole) {
+            setUserProfile(prev => ({ ...prev, role: storedRole }));
+        }
     }
     fetchProducts();
+  }, []);
+
+  const updateRole = useCallback((role: UserRole) => {
+      setUserProfile(prev => ({ ...prev, role }));
+      if (role) localStorage.setItem('user_role', role);
   }, []);
 
   const completeOnboarding = useCallback(() => {
@@ -131,6 +146,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apiConnected,
         isCheckoutOpen,
         showOnboarding,
+        updateRole,
         completeOnboarding,
         openCheckout,
         closeCheckout,
