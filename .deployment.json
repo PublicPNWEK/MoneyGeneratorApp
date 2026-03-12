@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "scripts/deploy.sh production",
+    "deploy:staging": "scripts/deploy.sh staging"
+  },
+  "automation": {
+    "enabled": true,
+    "triggers": [
+      {
+        "type": "git-push",
+        "branch": "main",
+        "action": "auto-deploy",
+        "description": "Automatically deploy on git push to main"
+      }
+    ],
+    "ci-cd": {
+      "provider": "GitHub Actions",
+      "workflow": ".github/workflows/deploy.yml",
+      "status": "configured",
+      "requirements": [
+        "NETLIFY_AUTH_TOKEN (set in GitHub Secrets)",
+        "NETLIFY_SITE_ID (set in GitHub Secrets)"
+      ]
+    },
+    "deployment": {
+      "local": {
+        "command": "npm run deploy",
+        "description": "Deploy from local machine"
+      },
+      "automated": {
+        "trigger": "git push to main",
+        "description": "Automatic deployment via GitHub Actions"
+      }
+    }
+  }
+}
