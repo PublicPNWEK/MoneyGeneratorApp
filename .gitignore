@@ -85,8 +85,10 @@ jest.config.js
 .eslintrc.js
 .watchmanconfig
 package.json
+!web/package.json
 package-lock.json
 tsconfig.json
+!web/tsconfig.json
 __tests__/
 
 # Metrics artifacts
