@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { ToastProvider, useToast } from './components/Toast';
+import { Checkout } from './components/Checkout';
+import { Dashboard } from './components/Dashboard';
 import './App.css';
 
 type Product = {
@@ -7,6 +11,13 @@ type Product = {
   name: string;
   price: string;
   description: string;
+};
+
+type UserProfile = {
+  bankConnected: boolean;
+  subscription: string | null;
+  earnings: number;
+  weeklyChange: number;
 };
 
 const DEMO_PRODUCTS: Product[] = [
@@ -33,15 +44,27 @@ const DEMO_PRODUCTS: Product[] = [
   },
 ];
 
-function App() {
+function AppContent() {
   const [products, setProducts] = useState<Product[]>(DEMO_PRODUCTS);
-  const [error, setError] = useState<string | null>(null);
   const [apiConnected, setApiConnected] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products'>('dashboard');
+  const [userProfile, setUserProfile] = useState<UserProfile>({
+    bankConnected: false,
+    subscription: null,
+    earnings: 2847,
+    weeklyChange: 12,
+  });
 
+  const { showToast } = useToast();
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
   useEffect(() => {
-    // Try to fetch products from API in the background
+    const onboardingComplete = localStorage.getItem('onboarding_complete');
+    if (!onboardingComplete) {
+      setShowOnboarding(true);
+    }
     fetchProducts();
   }, []);
 
@@ -49,10 +72,10 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
+
       const response = await fetch(`${apiUrl}/api/catalog`, { signal: controller.signal });
       clearTimeout(timeoutId);
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.products && Array.isArray(data.products)) {
@@ -60,140 +83,151 @@ function App() {
           setApiConnected(true);
         }
       }
-      setError(null);
-    } catch (err) {
-      // Silently fail and keep using demo products
+    } catch {
       setApiConnected(false);
     }
   };
 
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+    showToast('Welcome to Money Generator!', 'success');
+  }, [showToast]);
+
+  const handleConnectBank = useCallback(() => {
+    showToast('Opening bank connection...', 'info');
+    // In production, this would trigger Plaid Link
+    setTimeout(() => {
+      setUserProfile((prev) => ({ ...prev, bankConnected: true }));
+      showToast('Bank account connected successfully!', 'success');
+    }, 1500);
+  }, [showToast]);
+
+  const handleSelectPlan = useCallback(
+    (planId: string, _cycle: string, addons: string[]) => {
+      setShowCheckout(false);
+      setUserProfile((prev) => ({ ...prev, subscription: planId }));
+      const addonText = addons.length > 0 ? ` with ${addons.length} add-on(s)` : '';
+      showToast(`Subscribed to ${planId}${addonText}!`, 'success');
+    },
+    [showToast]
+  );
+
   return (
     <div className="app">
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={handleOnboardingComplete}
+          onConnectBank={handleConnectBank}
+          onSelectPlan={(planId) => {
+            setUserProfile((prev) => ({ ...prev, subscription: planId }));
+          }}
+        />
+      )}
+
+      {showCheckout && (
+        <Checkout
+          currentPlan={userProfile.subscription || undefined}
+          onSelectPlan={handleSelectPlan}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
+
       <header className="app-header">
-        <h1>Money Generator App</h1>
+        <h1>Money Generator</h1>
         <p className="tagline">Turn time into money with smart job matching</p>
         <div className="health-badge">
-          <span className={apiConnected ? 'status-ok' : 'status-error'}>
+          <span className={apiConnected ? 'status-ok' : 'status-demo'}>
             {apiConnected ? '✓ API Connected' : '○ Demo Mode'}
           </span>
         </div>
       </header>
 
+      <nav className="app-nav">
+        <button
+          className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          Dashboard
+        </button>
+        <button
+          className={`nav-tab ${activeTab === 'products' ? 'active' : ''}`}
+          onClick={() => setActiveTab('products')}
+        >
+          Products
+        </button>
+      </nav>
+
       <main className="app-main">
-        <div className="hero">
-          <h2>Maximize Your Earnings</h2>
-          <p>Choose the plan that works best for your gig economy needs</p>
-        </div>
-
-        {products.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '2rem',
-            marginBottom: '3rem',
-          }}>
-            {products.map((product) => (
-              <div
-                key={product.id}
-                style={{
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  padding: '2rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  transition: 'all 0.3s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.15)';
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <div style={{ marginBottom: '1rem' }}>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>
-                    {product.name}
-                  </h3>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      background: '#f3f4f6',
-                      color: '#6366f1',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '20px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {product.type}
-                  </span>
-                </div>
-
-                <p style={{
-                  fontSize: '1rem',
-                  color: '#6b7280',
-                  marginBottom: '1.5rem',
-                  lineHeight: '1.5',
-                }}>
-                  {product.description}
-                </p>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span style={{
-                    fontSize: '1.75rem',
-                    fontWeight: '700',
-                    color: '#667eea',
-                  }}>
-                    {product.price}
-                  </span>
-                  <button
-                    className="btn-primary"
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      fontSize: '0.95rem',
-                    }}
-                  >
-                    Get Started
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {activeTab === 'dashboard' && (
+          <Dashboard
+            earnings={userProfile.earnings}
+            weeklyChange={userProfile.weeklyChange}
+            bankConnected={userProfile.bankConnected}
+            hasSubscription={!!userProfile.subscription}
+            onConnectBank={handleConnectBank}
+            onUpgrade={() => setShowCheckout(true)}
+            onViewAnalytics={() => showToast('Analytics coming soon!', 'info')}
+          />
         )}
 
-        {error && (
-          <div style={{
-            background: '#fee2e2',
-            color: '#991b1b',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '2rem',
-          }}>
-            Error: {error}
-          </div>
+        {activeTab === 'products' && (
+          <>
+            <div className="hero">
+              <h2>Maximize Your Earnings</h2>
+              <p>Choose the plan that works best for your gig economy needs</p>
+              <div className="hero-buttons">
+                <button className="btn-primary" onClick={() => setShowCheckout(true)}>
+                  View Plans
+                </button>
+                <button className="btn-secondary" onClick={handleConnectBank}>
+                  Connect Bank
+                </button>
+              </div>
+            </div>
+
+            <section className="products">
+              <h2>Featured Products</h2>
+              <div className="products-grid">
+                {products.map((product) => (
+                  <div key={product.id} className="product-card">
+                    <span className="product-type">{product.type}</span>
+                    <h3>{product.name}</h3>
+                    <p className="product-description">{product.description}</p>
+                    <div className="product-footer">
+                      <span className="product-price">{product.price}</span>
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          if (product.type === 'plan') {
+                            setShowCheckout(true);
+                          } else {
+                            showToast(`Added ${product.name} to cart`, 'success');
+                          }
+                        }}
+                      >
+                        Get Started
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
         )}
       </main>
 
-      <footer style={{
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
-        padding: '2rem',
-        textAlign: 'center',
-        color: '#6b7280',
-        marginTop: 'auto',
-      }}>
+      <footer className="app-footer">
         <p>&copy; 2026 Money Generator App. All rights reserved.</p>
       </footer>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

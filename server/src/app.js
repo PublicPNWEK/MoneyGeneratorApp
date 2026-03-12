@@ -13,6 +13,7 @@ import { MetricsService } from './metrics.js';
 import { cacheMiddleware, cacheUtils } from './cache.js';
 import { validate, validateQuery, schemas } from './validation.js';
 import { healthCheckMiddleware } from './shutdown.js';
+import apiRoutes from './routes/api.js';
 
 const app = express();
 
@@ -374,6 +375,8 @@ app.get('/metrics/rollup/daily', validateQuery(schemas.dailyRollup), cacheMiddle
   res.json({ rollup: refreshed });
 });
 
+// Mount new API routes for gig platforms, advances, benefits, expenses, notifications, and profiles
+app.use('/api/v1', apiRoutes);
 
 // Global error handler (must be last)
 app.use((err, req, res, next) => {

@@ -7,17 +7,34 @@
   NODE_VERSION = "20"
   CI = "true"
 
+# Development context
+[context.deploy-preview]
+  command = "npm ci && npm run build"
+
+[context.deploy-preview.environment]
+  VITE_API_URL = "https://staging-api.moneygenerator.app"
+
+# Production context
+[context.production]
+  command = "npm ci && npm run build"
+
+[context.production.environment]
+  VITE_API_URL = "https://api.moneygenerator.app"
+
+# API proxy for backend services
 [[redirects]]
   from = "/api/*"
-  to = "https://your-backend-domain.com/:splat"
+  to = "${VITE_API_URL}/api/:splat"
   status = 200
   force = true
 
+# SPA fallback - must be last
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# Security headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -25,8 +42,42 @@
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.moneygenerator.app https://*.plaid.com; frame-src https://cdn.plaid.com;"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
+# Cache static assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache fonts
+[[headers]]
+  for = "*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# CORS for API routes
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Functions configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Plugins
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+[[plugins]]
+  package = "netlify-plugin-submit-sitemap"
+  [plugins.inputs]
+    baseUrl = "https://moneygenerator.app"
+    sitemapPath = "/sitemap.xml"
+    ignorePeriod = 0
+    providers = ["google", "bing"]

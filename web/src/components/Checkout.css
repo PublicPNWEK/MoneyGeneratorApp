@@ -1,0 +1,399 @@
+.checkout-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.checkout-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.checkout-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  z-index: 10;
+}
+
+.checkout-close:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.checkout-header {
+  padding: 2rem;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.checkout-header h2 {
+  font-size: 1.75rem;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+}
+
+.billing-toggle {
+  display: inline-flex;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #1f2937;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.savings-badge {
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.checkout-content {
+  padding: 2rem;
+}
+
+/* Plans Container */
+.plans-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.plan-option {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.plan-option:hover {
+  border-color: #667eea;
+}
+
+.plan-option.selected {
+  border-color: #667eea;
+  background: #f8f7ff;
+}
+
+.plan-option.popular {
+  border-color: #667eea;
+}
+
+.popular-tag {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.25rem 1rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.plan-option h3 {
+  font-size: 1.25rem;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+}
+
+.plan-pricing {
+  margin-bottom: 0.5rem;
+}
+
+.plan-pricing .price {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.plan-pricing .period {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.annual-total {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+
+.plan-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  text-align: left;
+}
+
+.plan-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+}
+
+.feature-check {
+  color: #10b981;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.btn-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-select:hover,
+.btn-select.selected {
+  background: #667eea;
+  color: white;
+}
+
+/* Addons */
+.addons-container {
+  text-align: center;
+}
+
+.addons-intro {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+.addons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.addon-card:hover {
+  border-color: #667eea;
+}
+
+.addon-card.selected {
+  border-color: #667eea;
+  background: #f8f7ff;
+}
+
+.addon-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.addon-card.selected .addon-checkbox {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.addon-info {
+  flex: 1;
+}
+
+.addon-info h4 {
+  font-size: 1rem;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+}
+
+.addon-info p {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.addon-price {
+  font-weight: 600;
+  color: #667eea;
+  white-space: nowrap;
+}
+
+.btn-skip {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btn-skip:hover {
+  color: #667eea;
+  text-decoration: underline;
+}
+
+/* Confirm */
+.confirm-container {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.order-summary {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.order-summary h3 {
+  font-size: 1rem;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  color: #4b5563;
+}
+
+.summary-item.addon {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.summary-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0.75rem 0;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.trust-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.trust-item {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* Footer */
+.checkout-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 16px 16px;
+}
+
+.btn-checkout {
+  min-width: 180px;
+}
+
+/* Standalone Plan Card */
+.plan-card-standalone {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+}
+
+.plan-card-standalone.popular {
+  border-color: #667eea;
+}
+
+@media (max-width: 768px) {
+  .plans-container {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-footer {
+    flex-direction: column;
+  }
+
+  .btn-checkout {
+    width: 100%;
+  }
+}
