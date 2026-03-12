@@ -1,15 +1,53 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import './ProductsPage.css';
+
+// Added mock data for products if context doesn't provide it
+const DEFAULT_PRODUCTS = [
+  {
+    id: 'starter',
+    name: 'Starter Plan',
+    description: 'Perfect for getting started with gig economy tracking.',
+    price: '$0/mo',
+    type: 'Free',
+    features: ['Basic Income Tracking', 'Expense Logging', 'Community Access']
+  },
+  {
+    id: 'pro',
+    name: 'Pro Plan',
+    description: 'Advanced analytics and automated tax estimates.',
+    price: '$9.99/mo',
+    type: 'Popular',
+    features: ['Everything in Free', 'Tax Estimates', 'Unlimited Reports', 'Priority Support']
+  },
+  {
+    id: 'business',
+    name: 'Business Plan',
+    description: 'For power users managing multiple income streams.',
+    price: '$29.99/mo',
+    type: 'Business',
+    features: ['Everything in Pro', 'Team Access', 'Custom Invoicing', 'Dedicated Account Manager']
+  }
+];
 
 export const ProductsPage: React.FC = () => {
-  const { products, openCheckout, connectBank } = useAppContext();
+  const { products: contextProducts, openCheckout, connectBank } = useAppContext();
+  const [products, setProducts] = useState(contextProducts);
+
+  useEffect(() => {
+    if (!contextProducts || contextProducts.length === 0) {
+      setProducts(DEFAULT_PRODUCTS as any);
+    } else {
+      setProducts(contextProducts);
+    }
+  }, [contextProducts]);
 
   return (
     <div className="products-page">
-      <div className="card elevated" style={{ textAlign: 'center', padding: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
-        <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, marginBottom: 'var(--space-2)' }}>Maximize Your Earnings</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>Choose the plan that works best for your gig economy needs</p>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div className="products-banner">
+        <h2>Maximize Your Earnings</h2>
+        <p>Choose the plan that works best for your gig economy needs</p>
+        <div className="products-actions">
           <button className="button primary" onClick={openCheckout}>
             View Plans
           </button>
@@ -19,18 +57,29 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      <section style={{ marginBottom: 'var(--space-6)' }}>
-        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Featured Products</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>
-          {products.map((product) => (
-            <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 'var(--space-3)' }}>
-                <span className="badge bg-emerald-100 text-emerald-700">{product.type}</span>
+      <div className="featured-section">
+        <h3 className="featured-title">Featured Products</h3>
+        <div className="products-grid">
+          {products.map((product: any) => (
+            <div key={product.id} className="product-card">
+              <div className="product-badge-wrapper">
+                <span className={`badge ${product.type === 'Popular' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                  {product.type}
+                </span>
               </div>
-              <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>{product.name}</h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', flex: 1 }}>{product.description}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-emerald-600)' }}>{product.price}</span>
+              <h3 className="product-title">{product.name}</h3>
+              <p className="product-description">{product.description}</p>
+              
+              {product.features && (
+                <ul className="product-features">
+                  {product.features.map((feature: string, idx: number) => (
+                    <li key={idx}>✓ {feature}</li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="product-footer">
+                <span className="product-price">{product.price}</span>
                 <button className="button primary" onClick={openCheckout}>
                   Select
                 </button>
@@ -38,7 +87,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 };
