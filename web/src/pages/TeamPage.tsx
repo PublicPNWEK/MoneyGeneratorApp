@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Users, Plus, Shield, Wallet, BarChart3, Crown } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import './TeamPage.css';
 
 export const TeamPage: React.FC = () => {
   const { showToast } = useToast();
@@ -116,34 +117,6 @@ export const TeamPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <style>{`
-        .header-actions { display: flex; gap: 0.5rem; }
-        .invite-input { padding: 0.65rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; min-width: 220px; }
-        .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
-        .team-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; text-align: left; }
-        .card-header { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; margin-bottom: 0.75rem; }
-        .member-list { display: flex; flex-direction: column; gap: 0.75rem; }
-        .member-row { display: flex; justify-content: space-between; align-items: center; }
-        .member-name { font-weight: 700; display: flex; align-items: center; gap: 0.25rem; }
-        .member-email { color: #475569; font-size: 0.9rem; }
-        .member-perms { color: #94a3b8; font-size: 0.85rem; }
-        .badge { background: #eef2ff; color: #4338ca; padding: 0.35rem 0.6rem; border-radius: 999px; font-weight: 700; font-size: 0.8rem; }
-        .wallet-balance { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .muted { color: #64748b; }
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin: 0.75rem 0; }
-        .progress-row { display: flex; align-items: center; gap: 0.5rem; }
-        .progress-track { flex: 1; height: 8px; background: #e2e8f0; border-radius: 6px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); }
-        .permission-list { margin: 0; padding-left: 1rem; color: #334155; display: flex; flex-direction: column; gap: 0.35rem; }
-        .insight-row { display: flex; justify-content: space-between; margin-bottom: 0.35rem; }
-        .task-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
-        .task-row { display: flex; justify-content: space-between; align-items: center; }
-        .task-title { font-weight: 700; }
-        .task-meta { color: #94a3b8; font-size: 0.85rem; }
-        .badge.muted { background: #f1f5f9; color: #334155; }
-        @media (max-width: 640px) { .header-actions { flex-direction: column; align-items: stretch; } }
-      `}</style>
     </div>
   );
 };
