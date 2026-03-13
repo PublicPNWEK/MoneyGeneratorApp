@@ -343,6 +343,29 @@
   color: var(--text-secondary);
 }
 
+/* Tooltip entry color classes */
+.tooltip-entry-earnings { color: #3b82f6; }
+.tooltip-entry-expenses { color: #ef4444; }
+.tooltip-entry-net { color: #10b981; }
+
+/* Platform dot color classes */
+.dot-uber { background: #3b82f6; }
+.dot-doordash { background: #10b981; }
+.dot-instacart { background: #f59e0b; }
+.dot-other { background: #ef4444; }
+
+/* Visually hidden label for accessibility */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
 /* Insights Section */
 .insights-section {
   margin-top: 2rem;
@@ -412,6 +435,50 @@
   font-size: 0.9rem;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+/* Custom Chart Builder */
+.custom-chart-section {
+  margin-top: 2.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+.custom-chart-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+.custom-chart-controls {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.custom-chart-controls label {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.custom-chart-controls select {
+  margin-left: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  padding: 0.25rem 0.75rem;
+}
+.custom-chart-preview {
+  width: 100%;
+  min-height: 250px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  padding: 1rem 0.5rem;
 }
 
 /* Responsive */

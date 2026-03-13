@@ -139,7 +139,7 @@ export function OnboardingWizard({
     <div className="onboarding-overlay">
       <div className="onboarding-wizard">
         <div className="onboarding-progress" aria-hidden="true">
-          <div className="progress-bar" style={{ width: `${progress}%` }} />
+          <progress className="progress-bar" value={progress} max={100} />
         </div>
 
         <div className="onboarding-step-label" aria-live="polite">
@@ -173,7 +173,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'freelancer' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('freelancer')}
-                  aria-pressed={role === 'freelancer'}
                   aria-label="Select Freelancer or Gig Worker role"
                 >
                     <div className="role-icon"><Briefcase size={24} /></div>
@@ -185,7 +184,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'business' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('business')}
-                  aria-pressed={role === 'business'}
                   aria-label="Select Business Owner role"
                 >
                     <div className="role-icon"><Building size={24} /></div>
@@ -197,7 +195,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'individual' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('individual')}
-                  aria-pressed={role === 'individual'}
                   aria-label="Select Individual role"
                 >
                     <div className="role-icon"><User size={24} /></div>
@@ -222,7 +219,6 @@ export function OnboardingWizard({
                     key={platform.id}
                     className={`platform-card ${connectedPlatforms.includes(platform.id) ? 'selected' : ''}`}
                     onClick={() => handlePlatformToggle(platform.id)}
-                    aria-pressed={connectedPlatforms.includes(platform.id)}
                     aria-label={`Toggle ${platform.name}`}
                   >
                     <span className="platform-icon">{platform.icon}</span>
@@ -291,9 +287,6 @@ export function OnboardingWizard({
                     value={weeklyGoal}
                     onChange={(e) => setWeeklyGoal(Number(e.target.value))}
                     className="goal-slider"
-                    aria-valuemin={100}
-                    aria-valuemax={5000}
-                    aria-valuenow={weeklyGoal}
                     aria-label="Weekly goal"
                   />
                 </div>
@@ -312,9 +305,6 @@ export function OnboardingWizard({
                     value={taxReserve}
                     onChange={(e) => setTaxReserve(Number(e.target.value))}
                     className="goal-slider"
-                    aria-valuemin={10}
-                    aria-valuemax={40}
-                    aria-valuenow={taxReserve}
                     aria-label="Tax reserve percentage"
                   />
                 </div>
@@ -341,7 +331,6 @@ export function OnboardingWizard({
                     type="button"
                     className={`plan-card ${selectedPlan === 'plan_free' ? 'selected' : ''}`}
                     onClick={() => handlePlanSelect('plan_free')}
-                    aria-pressed={selectedPlan === 'plan_free'}
                     aria-label="Select Free plan"
                     >
                       <h3>Free</h3>
@@ -356,7 +345,6 @@ export function OnboardingWizard({
                     type="button"
                     className={`plan-card ${selectedPlan === 'plan_pro' ? 'selected' : ''}`}
                     onClick={() => handlePlanSelect('plan_pro')}
-                    aria-pressed={selectedPlan === 'plan_pro'}
                     aria-label="Select Pro plan"
                     >
                       <h3>Pro</h3>

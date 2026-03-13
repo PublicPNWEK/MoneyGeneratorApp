@@ -3,7 +3,7 @@
  * Provides guided tours, tooltips, and progressive feature disclosure
  */
 
-import React, { useState, useContext, useCallback, useEffect } from 'react';
+import React, { useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { X, HelpCircle, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
 import '../components/OnboardingEducation.css';
 
@@ -254,6 +254,8 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
   showSkip = true,
 }) => {
   const [highlightElement, setHighlightElement] = useState<HTMLElement | null>(null);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
   const step = steps[currentStepIndex];
 
   useEffect(() => {
@@ -269,6 +271,25 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       setHighlightElement(null);
     }
   }, [isActive, currentStepIndex, step?.highlightSelector]);
+
+  useEffect(() => {
+    if (!highlightElement || !highlightRef.current) return;
+    const top = highlightElement.offsetTop - 8;
+    const left = highlightElement.offsetLeft - 8;
+    const width = highlightElement.offsetWidth + 16;
+    const height = highlightElement.offsetHeight + 16;
+
+    highlightRef.current.style.top = `${top}px`;
+    highlightRef.current.style.left = `${left}px`;
+    highlightRef.current.style.width = `${width}px`;
+    highlightRef.current.style.height = `${height}px`;
+  }, [highlightElement]);
+
+  useEffect(() => {
+    if (!progressFillRef.current) return;
+    const percent = ((currentStepIndex + 1) / steps.length) * 100;
+    progressFillRef.current.style.width = `${percent}%`;
+  }, [currentStepIndex, steps.length]);
 
   const handleNext = () => {
     if (currentStepIndex < steps.length - 1) {
@@ -300,12 +321,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       {highlightElement && (
         <div
           className="tour-highlight"
-          style={{
-            top: highlightElement.offsetTop - 8,
-            left: highlightElement.offsetLeft - 8,
-            width: highlightElement.offsetWidth + 16,
-            height: highlightElement.offsetHeight + 16,
-          }}
+          ref={highlightRef}
         />
       )}
 
@@ -342,10 +358,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
               {currentStepIndex + 1} of {steps.length}
             </span>
             <div className="tour-progress-bar">
-              <div
-                className="tour-progress-fill"
-                style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
-              />
+              <div className="tour-progress-fill" ref={progressFillRef} />
             </div>
           </div>
 
@@ -397,6 +410,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
   maxWidth = 250,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!tooltipRef.current) return;
+    tooltipRef.current.style.maxWidth = `${maxWidth}px`;
+  }, [maxWidth, isVisible]);
 
   const handleMouseEnter = () => trigger === 'hover' && setIsVisible(true);
   const handleMouseLeave = () => trigger === 'hover' && setIsVisible(false);
@@ -417,7 +436,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       {isVisible && (
         <div
           className={`tooltip tooltip-${position}`}
-          style={{ maxWidth }}
+          ref={tooltipRef}
           role="tooltip"
         >
           {content}
@@ -437,6 +456,12 @@ export const OnboardingChecklist: React.FC = () => {
 
   const checkpoints = getAllCheckpoints();
   const completionPercent = getCompletionPercentage();
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!progressFillRef.current) return;
+    progressFillRef.current.style.width = `${completionPercent}%`;
+  }, [completionPercent]);
 
   return (
     <div className="onboarding-checklist">
@@ -445,10 +470,7 @@ export const OnboardingChecklist: React.FC = () => {
         <div className="checklist-progress">
           <div className="progress-value">{completionPercent}%</div>
           <div className="progress-bar-full">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${completionPercent}%` }}
-            />
+            <div className="progress-bar-fill" ref={progressFillRef} />
           </div>
         </div>
       </div>
@@ -576,7 +598,7 @@ export const EducationalHint: React.FC<HintProps> = ({
   type = 'info',
 }) => {
   return (
-    <div className={`educational-hint hint-${type}`} role="notification">
+    <div className={`educational-hint hint-${type}`} role="status" aria-live="polite">
       {icon && <div className="hint-icon">{icon}</div>}
       <div className="hint-content">
         <h4 className="hint-title">{title}</h4>

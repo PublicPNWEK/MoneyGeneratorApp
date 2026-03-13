@@ -3,6 +3,7 @@ import { featureFlagsService } from '../services/featureFlags.js';
 import referralsRouter from './v2/referrals.js';
 import subscriptionsRouter from './v2/subscriptions.js';
 import reportingRouter from './v2/reporting.js';
+import teamRouter from './v2/team.js';
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ const router = express.Router();
 router.use('/referrals', referralsRouter);
 router.use('/subscriptions', subscriptionsRouter);
 router.use('/reporting', reportingRouter);
+router.use('/team', teamRouter);
 
 /**
  * Feature Flags V2 Routes

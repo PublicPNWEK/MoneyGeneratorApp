@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import {
   Line,
+  LineChart,
   BarChart,
   Bar,
   PieChart as RechartsPieChart,
@@ -70,89 +71,102 @@ const ReportsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
   const [platformData, setPlatformData] = useState<PlatformData[]>([]);
-  const [metrics, setMetrics] = useState<MetricCard[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+
+  // Debounce fetchReportData to avoid rapid re-renders
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    fetchReportData();
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(() => {
+      fetchReportData();
+    }, 200);
+    return () => {
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRange]);
 
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Simulated data - replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate mock earnings data
-      const days = Math.ceil((selectedRange.end.getTime() - selectedRange.start.getTime()) / (24 * 60 * 60 * 1000));
-      const mockEarnings: EarningsData[] = [];
-      
-      for (let i = 0; i < Math.min(days, 30); i++) {
-        const date = new Date(selectedRange.end.getTime() - i * 24 * 60 * 60 * 1000);
-        mockEarnings.unshift({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          earnings: Math.floor(Math.random() * 200 + 100),
-          expenses: Math.floor(Math.random() * 50 + 20),
-          net: 0,
-        });
-      }
-      mockEarnings.forEach(d => d.net = d.earnings - d.expenses);
-      setEarningsData(mockEarnings);
+      const userId = 'demo-user'; // Replace with real user ID if available
+      const startDate = selectedRange.start.toISOString().slice(0, 10);
+      const endDate = selectedRange.end.toISOString().slice(0, 10);
 
-      // Platform breakdown
-      setPlatformData([
-        { name: 'Uber', value: 45, color: COLORS[0] },
-        { name: 'DoorDash', value: 30, color: COLORS[1] },
-        { name: 'Instacart', value: 15, color: COLORS[2] },
-        { name: 'Other', value: 10, color: COLORS[3] },
-      ]);
+      // Fetch summary analytics
+      const summaryRes = await fetch(`${apiUrl}/api/v2/analytics/summary?userId=${userId}&startDate=${startDate}&endDate=${endDate}`);
+      if (!summaryRes.ok) throw new Error('Failed to fetch analytics summary');
+      const summaryData = await summaryRes.json();
 
-      // Metrics
-      const totalEarnings = mockEarnings.reduce((sum, d) => sum + d.earnings, 0);
-      const totalExpenses = mockEarnings.reduce((sum, d) => sum + d.expenses, 0);
-      const avgDaily = totalEarnings / mockEarnings.length;
-      const hoursWorked = mockEarnings.length * 6.5;
+      // Fetch platform breakdown
+      const breakdownRes = await fetch(`${apiUrl}/api/v2/analytics/breakdown?userId=${userId}&groupBy=platform&startDate=${startDate}&endDate=${endDate}`);
+      if (!breakdownRes.ok) throw new Error('Failed to fetch platform breakdown');
+      const breakdownData = await breakdownRes.json();
 
-      setMetrics([
-        {
-          label: 'Total Earnings',
-          value: `$${totalEarnings.toLocaleString()}`,
-          change: 12.5,
-          icon: <DollarSign size={20} />,
-          trend: 'up',
-        },
-        {
-          label: 'Net Profit',
-          value: `$${(totalEarnings - totalExpenses).toLocaleString()}`,
-          change: 8.3,
-          icon: <TrendingUp size={20} />,
-          trend: 'up',
-        },
-        {
-          label: 'Avg Daily',
-          value: `$${avgDaily.toFixed(0)}`,
-          change: -2.1,
-          icon: <Activity size={20} />,
-          trend: 'down',
-        },
-        {
-          label: 'Hours Worked',
-          value: `${hoursWorked.toFixed(0)}h`,
-          change: 5.0,
-          icon: <Clock size={20} />,
-          trend: 'up',
-        },
-      ]);
+      // Map summary timeSeries to earningsData
+      const earnings = (summaryData.timeSeries || []).map((d: any) => ({
+        date: d.date,
+        earnings: d.amount,
+        expenses: 0, // Optionally fetch expenses from another endpoint
+        net: d.amount, // Placeholder, update if net available
+      }));
+      setEarningsData(earnings);
 
-    } catch (error) {
-      console.error('Failed to fetch report data:', error);
+      // Map breakdown to platformData
+      const platforms = (breakdownData.byPlatform || []).map((p: any, i: number) => ({
+        name: p.platform,
+        value: p.amount,
+        color: COLORS[i % COLORS.length],
+      }));
+      setPlatformData(platforms);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRange, apiUrl]);
 
-  const handleExport = (format: 'csv' | 'pdf') => {
-    // TODO: Implement export functionality
-    console.log(`Exporting as ${format}...`);
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (format === 'csv') {
+      // Export earningsData as CSV
+      const header = 'date,earnings,expenses,net';
+      const rows = earningsData.map(d => [d.date, d.earnings, d.expenses, d.net].join(','));
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `moneygen-report-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'pdf') {
+      // Try to use jsPDF if available
+      try {
+        // @ts-ignore
+        const jsPDF = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
+        if (!jsPDF) {
+          alert('PDF export requires jsPDF. Please include jsPDF in your project.');
+          return;
+        }
+        const doc = new jsPDF();
+        doc.text('Money Generator Report', 10, 10);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 20);
+        doc.text('Earnings Data:', 10, 30);
+        let y = 40;
+        doc.text('Date      Earnings  Expenses  Net', 10, y);
+        y += 8;
+        earningsData.forEach(d => {
+          doc.text(`${d.date.padEnd(10)} $${d.earnings.toFixed(2)}   $${d.expenses.toFixed(2)}   $${d.net.toFixed(2)}`, 10, y);
+          y += 8;
+        });
+        doc.save(`moneygen-report-${new Date().toISOString().slice(0,10)}.pdf`);
+      } catch (e) {
+        alert('PDF export failed. Please ensure jsPDF is loaded.');
+      }
+    }
   };
 
   const renderCustomTooltip = ({ active, payload, label }: any) => {
@@ -161,7 +175,7 @@ const ReportsPage: React.FC = () => {
         <div className="custom-tooltip">
           <p className="tooltip-label">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
+            <p key={index} className={`tooltip-entry tooltip-entry-${entry.name?.toLowerCase()}`}>
               {entry.name}: ${entry.value}
             </p>
           ))}
@@ -171,6 +185,61 @@ const ReportsPage: React.FC = () => {
     return null;
   };
 
+  // Memoize metrics for performance
+  const metrics = useMemo<MetricCard[]>(() => {
+    if (!earningsData.length) return [];
+    const totalEarnings = earningsData.reduce((sum, d) => sum + d.earnings, 0);
+    const totalExpenses = earningsData.reduce((sum, d) => sum + d.expenses, 0);
+    const avgDaily = totalEarnings / earningsData.length;
+    const hoursWorked = earningsData.length * 6.5;
+    return [
+      {
+        label: 'Total Earnings',
+        value: `$${totalEarnings.toLocaleString()}`,
+        change: 12.5,
+        icon: <DollarSign size={20} />,
+        trend: 'up',
+      },
+      {
+        label: 'Net Profit',
+        value: `$${(totalEarnings - totalExpenses).toLocaleString()}`,
+        change: 8.3,
+        icon: <TrendingUp size={20} />,
+        trend: 'up',
+      },
+      {
+        label: 'Avg Daily',
+        value: `$${avgDaily.toFixed(0)}`,
+        change: -2.1,
+        icon: <Activity size={20} />,
+        trend: 'down',
+      },
+      {
+        label: 'Hours Worked',
+        value: `${hoursWorked.toFixed(0)}h`,
+        change: 5.0,
+        icon: <Clock size={20} />,
+        trend: 'up',
+      },
+    ];
+  }, [earningsData]);
+
+  // --- Custom Chart Builder UI ---
+  const chartTypes = [
+    { label: 'Line', value: 'line' },
+    { label: 'Bar', value: 'bar' },
+    { label: 'Area', value: 'area' },
+    { label: 'Pie', value: 'pie' },
+  ];
+  const chartFields = [
+    { label: 'Earnings', value: 'earnings' },
+    { label: 'Expenses', value: 'expenses' },
+    { label: 'Net Profit', value: 'net' },
+  ];
+
+  const [customChartType, setCustomChartType] = useState('line');
+  const [customChartField, setCustomChartField] = useState('earnings');
+
   return (
     <div className="reports-page">
       {/* Header */}
@@ -179,11 +248,12 @@ const ReportsPage: React.FC = () => {
           <BarChart3 size={28} />
           <h1>Reports & Analytics</h1>
         </div>
-        
         <div className="header-actions">
           <div className="date-selector">
             <Calendar size={16} />
+            <label htmlFor="date-range-select" className="visually-hidden">Date Range</label>
             <select
+              id="date-range-select"
               value={DATE_RANGES.findIndex(r => r.label === selectedRange.label)}
               onChange={(e) => setSelectedRange(DATE_RANGES[parseInt(e.target.value)])}
             >
@@ -194,12 +264,10 @@ const ReportsPage: React.FC = () => {
               ))}
             </select>
           </div>
-          
           <button className="action-btn" onClick={() => fetchReportData()}>
             <RefreshCw size={16} />
             Refresh
           </button>
-          
           <div className="export-dropdown">
             <button className="action-btn primary">
               <Download size={16} />
@@ -212,8 +280,10 @@ const ReportsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
       {/* Loading State */}
+      {error && (
+        <div className="error-state">{error}</div>
+      )}
       {loading ? (
         <div className="loading-state">
           <RefreshCw className="spin" size={32} />
@@ -237,7 +307,6 @@ const ReportsPage: React.FC = () => {
               </div>
             ))}
           </div>
-
           {/* Charts Section */}
           <div className="charts-grid">
             {/* Earnings Over Time */}
@@ -300,7 +369,6 @@ const ReportsPage: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             </div>
-
             {/* Platform Breakdown */}
             <div className="chart-card">
               <div className="chart-header">
@@ -328,7 +396,7 @@ const ReportsPage: React.FC = () => {
                 <div className="pie-legend">
                   {platformData.map((platform, index) => (
                     <div key={index} className="pie-legend-item">
-                      <span className="dot" style={{ background: platform.color }}></span>
+                      <span className={`dot dot-${platform.name.toLowerCase()}`}></span>
                       <span className="name">{platform.name}</span>
                       <span className="value">{platform.value}%</span>
                     </div>
@@ -336,7 +404,6 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
             {/* Weekly Comparison */}
             <div className="chart-card">
               <div className="chart-header">
@@ -359,7 +426,6 @@ const ReportsPage: React.FC = () => {
               </div>
             </div>
           </div>
-
           {/* Insights Section */}
           <div className="insights-section">
             <h3>
@@ -395,6 +461,76 @@ const ReportsPage: React.FC = () => {
                   <p>Lunch hours (11am-1pm) show highest demand. Consider scheduling accordingly.</p>
                 </div>
               </div>
+            </div>
+          </div>
+          {/* Custom Chart Builder Section */}
+          <div className="custom-chart-section">
+            <h3>Custom Chart Builder</h3>
+            <div className="custom-chart-controls">
+              <label>
+                Chart Type:
+                <select value={customChartType} onChange={e => setCustomChartType(e.target.value)}>
+                  {chartTypes.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </label>
+              <label>
+                Data Field:
+                <select value={customChartField} onChange={e => setCustomChartField(e.target.value)}>
+                  {chartFields.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="custom-chart-preview">
+              {customChartType === 'line' && (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={earningsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
+                    <Tooltip content={renderCustomTooltip} />
+                    <Line type="monotone" dataKey={customChartField} stroke="#3b82f6" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+              {customChartType === 'bar' && (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={earningsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
+                    <Tooltip content={renderCustomTooltip} />
+                    <Bar dataKey={customChartField} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+              {customChartType === 'area' && (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={earningsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
+                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
+                    <Tooltip content={renderCustomTooltip} />
+                    <Area type="monotone" dataKey={customChartField} stroke="#3b82f6" fillOpacity={0.3} fill="#3b82f6" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+              {customChartType === 'pie' && (
+                <ResponsiveContainer width="100%" height={250}>
+                  <RechartsPieChart>
+                    <Pie
+                      data={earningsData}
+                      dataKey={customChartField}
+                      nameKey="date"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      fill="#3b82f6"
+                      label
+                    />
+                    <Tooltip content={renderCustomTooltip} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </>

@@ -30,6 +30,23 @@
   margin: 0 auto 2rem;
 }
 
+/* Current Plan Status */
+.current-plan-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 auto 1.5rem;
+  color: var(--text-secondary);
+}
+
+.current-plan-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 /* Billing Toggle */
 .billing-toggle {
   display: inline-flex;

@@ -138,8 +138,19 @@ const PricingPage: React.FC = () => {
     );
   };
 
-  const handleSelectPlan = (_planId: string) => {
+  const handleSelectPlan = (planId: string) => {
+    if (isCurrentPlan(planId)) return;
     openCheckout();
+  };
+
+  const handleCancelPlan = () => {
+    // TODO: Integrate with backend cancel endpoint
+    alert('Cancel subscription (not yet implemented)');
+  };
+
+  const handleDowngradePlan = () => {
+    // TODO: Integrate with backend downgrade endpoint
+    alert('Downgrade to Free (not yet implemented)');
   };
 
   const isCurrentPlan = (planId: string) => {
@@ -153,7 +164,16 @@ const PricingPage: React.FC = () => {
         <div className="hero-content">
           <h1>Simple, Transparent Pricing</h1>
           <p>Choose the plan that fits your gig economy lifestyle. All plans include a 14-day free trial.</p>
-          
+          {/* Current Plan Status */}
+          <div className="current-plan-status">
+            <strong>Current Plan:</strong> {userProfile.subscription || 'Free'}
+            {userProfile.subscription && userProfile.subscription !== 'plan_free' && (
+              <div className="current-plan-actions">
+                <button className="btn-secondary" onClick={handleCancelPlan}>Cancel</button>
+                <button className="btn-secondary" onClick={handleDowngradePlan}>Downgrade to Free</button>
+              </div>
+            )}
+          </div>
           {/* Billing Toggle */}
           <div className="billing-toggle">
             <button
@@ -184,13 +204,11 @@ const PricingPage: React.FC = () => {
               {plan.highlight && (
                 <div className="plan-highlight">{plan.highlight}</div>
               )}
-              
               <div className="plan-header">
                 <div className="plan-icon">{plan.icon}</div>
                 <h3 className="plan-name">{plan.name}</h3>
                 <p className="plan-description">{plan.description}</p>
               </div>
-
               <div className="plan-pricing">
                 <span className="price">{formatPrice(getPrice(plan))}</span>
                 {plan.monthlyPrice > 0 && (
@@ -202,7 +220,6 @@ const PricingPage: React.FC = () => {
                   </div>
                 )}
               </div>
-
               <ul className="plan-features">
                 {plan.features.map((feature, index) => (
                   <li key={index}>
@@ -211,7 +228,6 @@ const PricingPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
-
               <button
                 className={`plan-cta ${plan.popular ? 'primary' : 'secondary'}`}
                 onClick={() => handleSelectPlan(plan.id)}
@@ -220,6 +236,13 @@ const PricingPage: React.FC = () => {
                 {isCurrentPlan(plan.id) ? 'Current Plan' : plan.cta}
                 {!isCurrentPlan(plan.id) && <ArrowRight size={16} />}
               </button>
+              {/* Trial/Proration Info */}
+              {plan.id === 'plan_pro' && !isCurrentPlan(plan.id) && (
+                <div className="trial-info">14-day free trial. Cancel anytime.</div>
+              )}
+              {isCurrentPlan(plan.id) && plan.id !== 'plan_free' && (
+                <div className="proration-info">Prorated billing applies to plan changes.</div>
+              )}
             </div>
           ))}
         </div>

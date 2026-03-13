@@ -97,3 +97,6 @@ server/data/*.ndjson
 
 # Local Netlify folder
 .netlify
+
+# Local web logs
+web/*.log

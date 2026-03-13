@@ -49,6 +49,7 @@
 
 .card.glass {
   background: var(--glass-effect);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border: var(--glass-border);
   box-shadow: 0 8px 32px rgba(31, 41, 55, 0.1);
@@ -684,6 +685,7 @@ body.dark .badge.danger {
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: var(--z-modal-backdrop);
   animation: fadeIn var(--duration-fast) var(--easing-ease-out);
 }

@@ -1,7 +1,67 @@
+/* --- Team Plan Management Polish --- */
+.team-plan-row, .team-budget-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+.pending-invites {
+  margin-top: 0.5rem;
+  color: var(--color-info);
+  font-size: 0.97rem;
+}
+.role-select {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.97rem;
+  margin-left: 0.5rem;
+}
+.audit-log {
+  margin-top: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-xs);
+}
+.audit-log h5 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+.audit-log ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.audit-log li {
+  margin-bottom: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--color-info);
+}
 .team-page {
   padding: var(--space-4);
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.team-plan-card {
+  margin-bottom: var(--space-6);
+}
+
+.team-plan-manage {
+  width: auto;
+  padding: var(--space-2) var(--space-4);
+}
+
+.team-budget-used {
+  margin-left: var(--space-4);
 }
 
 .page-header {
@@ -150,15 +210,34 @@
 }
 
 .progress-track {
+  width: 100%;
   height: 8px;
-  background: var(--bg-secondary);
   border-radius: 4px;
   margin: var(--space-2) 0;
   overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  background: var(--bg-secondary);
 }
 
 .progress-fill {
   height: 100%;
+  background: var(--color-emerald-600);
+  border-radius: 4px;
+}
+
+.progress-track::-webkit-progress-bar {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.progress-track::-webkit-progress-value {
+  background: var(--color-emerald-600);
+  border-radius: 4px;
+}
+
+.progress-track::-moz-progress-bar {
   background: var(--color-emerald-600);
   border-radius: 4px;
 }

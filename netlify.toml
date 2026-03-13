@@ -3,7 +3,6 @@ base = "web"
 # TypeScript is a required dev dependency for the build: tsc && vite build
 command = "npm ci --include=dev && npm run build"
 publish = "dist"
-functions = "netlify/functions"
 
 [build.environment]
 NODE_VERSION = "20"
@@ -40,7 +39,7 @@ VITE_V2_ENABLED = "true"
 # API proxy for backend services - Production
 [[redirects]]
 from = "/api/v2/*"
-to = "/.netlify/functions/proxy-api"
+to = "https://api.moneygenerator.app/api/v2/:splat"
 status = 200
 force = true
 
@@ -169,11 +168,6 @@ Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
 Access-Control-Allow-Headers = "Content-Type, Authorization, X-User-ID"
 Access-Control-Max-Age = "86400"
 Cache-Control = "public, max-age=300, stale-while-revalidate=600"
-
-# Netlify functions configuration
-[functions]
-directory = "netlify/functions"
-node_bundler = "esbuild"
 
 # Build processing
 [build.processing.html]

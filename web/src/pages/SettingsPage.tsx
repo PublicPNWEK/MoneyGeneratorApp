@@ -8,6 +8,82 @@ import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
     const { userProfile, openCheckout } = useAppContext();
+        // --- Billing/Subscription Management Enhancements ---
+        const [showPlanDetails, setShowPlanDetails] = useState(false);
+        const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+        const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+        const PLANS = [
+          {
+            id: 'plan_free',
+            name: 'Free',
+            price: 0,
+            annualPrice: 0,
+            features: [
+              'Basic earnings tracking',
+              'Manual transaction entry',
+              'Monthly email reports',
+              'Community support',
+              '1 connected platform',
+            ],
+          },
+          {
+            id: 'plan_pro',
+            name: 'Pro',
+            price: 14.99,
+            annualPrice: 119.88,
+            features: [
+              'Everything in Free, plus:',
+              'Advanced analytics dashboard',
+              'Bank account integration',
+              'Instant payout tracking',
+              'Smart automations',
+              'Priority email support',
+              'Unlimited platforms',
+              'Export to CSV/PDF',
+            ],
+          },
+          {
+            id: 'plan_enterprise',
+            name: 'Enterprise',
+            price: 49.99,
+            annualPrice: 479.88,
+            features: [
+              'Everything in Pro, plus:',
+              'Team management (up to 10)',
+              'Custom integrations',
+              'Full API access',
+              'Dedicated account manager',
+              'Phone support',
+              'Custom reports',
+              'SLA guarantee',
+            ],
+          },
+        ];
+        const ADDONS = [
+          { id: 'addon_shift_insights', name: 'Shift Insights', price: 4.99, description: 'Deep per-shift profitability analysis with AI recommendations', icon: '📊' },
+          { id: 'addon_tax_prep', name: 'Tax Prep Bundle', price: 9.99, description: 'Automated tax categorization, quarterly estimates & export', icon: '📋' },
+          { id: 'addon_mileage', name: 'Mileage Tracker', price: 3.99, description: 'GPS-based automatic mileage logging with IRS reports', icon: '🚗' },
+          { id: 'addon_receipts', name: 'Receipt Scanner', price: 2.99, description: 'OCR receipt capture and automatic expense categorization', icon: '🧾' },
+        ];
+        const isCurrentPlan = (planId: string) => userProfile?.subscription === planId;
+        const getPrice = (plan: any) => billingCycle === 'monthly' ? plan.price : plan.annualPrice / 12;
+        const formatPrice = (price: number) => price === 0 ? 'Free' : `$${price.toFixed(2)}`;
+        const handleSelectPlan = (planId: string) => {
+          if (isCurrentPlan(planId)) return;
+          openCheckout();
+        };
+        const handleCancelPlan = () => {
+          // TODO: Integrate with backend cancel endpoint
+          showToast('Cancel subscription (not yet implemented)', 'info');
+        };
+        const handleDowngradePlan = () => {
+          // TODO: Integrate with backend downgrade endpoint
+          showToast('Downgrade to Free (not yet implemented)', 'info');
+        };
+        const toggleAddon = (addonId: string) => {
+          setSelectedAddons(prev => prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]);
+        };
+        const annualSavings = Math.round(((14.99 * 12 - 119.88) / (14.99 * 12)) * 100);
     const { showToast } = useToast();
     const { theme, toggleTheme } = useTheme();
     const { markTutorialWatched, user } = useOnboarding();
@@ -106,6 +182,92 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="settings-page">
+      {/* --- Subscription & Billing Section --- */}
+      <div className="card elevated settings-card" data-tour="billing-section">
+        <div className="settings-section-header">
+          <h3>Subscription & Billing</h3>
+        </div>
+        <div className="settings-grid">
+          <div className="setting-row">
+            <div className="setting-info">
+              <CreditCard size={20} className="setting-icon" />
+              <div>
+                <div className="setting-label">Current Plan</div>
+                <div className="setting-value">{userProfile.subscription ? PLANS.find(p => p.id === userProfile.subscription)?.name : 'Free'}</div>
+              </div>
+            </div>
+            {userProfile.subscription && userProfile.subscription !== 'plan_free' && (
+              <div className="subscription-actions">
+                <button className="button secondary" onClick={handleCancelPlan}>Cancel</button>
+                <button className="button secondary" onClick={handleDowngradePlan}>Downgrade to Free</button>
+              </div>
+            )}
+          </div>
+          <div className="setting-row">
+            <div className="setting-info">
+              <span className="setting-label">Billing Cycle</span>
+            </div>
+            <div className="billing-toggle">
+              <button className={`toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
+              <button className={`toggle-btn ${billingCycle === 'annual' ? 'active' : ''}`} onClick={() => setBillingCycle('annual')}>
+                Annual <span className="savings-badge">Save {annualSavings}%</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="plans-grid plans-grid-top">
+          {PLANS.map((plan) => (
+            <div key={plan.id} className={`plan-card ${isCurrentPlan(plan.id) ? 'current' : ''}`}>
+              <div className="plan-header">
+                <h4>{plan.name}</h4>
+                <p>{plan.features[1]}</p>
+              </div>
+              <div className="plan-pricing">
+                <span className="price">{formatPrice(getPrice(plan))}</span>
+                {plan.price > 0 && <span className="period">/month</span>}
+                {billingCycle === 'annual' && plan.annualPrice > 0 && (
+                  <div className="annual-total">Billed ${plan.annualPrice.toFixed(2)}/year</div>
+                )}
+              </div>
+              <ul className="plan-features">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx}><Check size={14} className="feature-check" /> {feature}</li>
+                ))}
+              </ul>
+              <button className="button primary" onClick={() => handleSelectPlan(plan.id)} disabled={isCurrentPlan(plan.id)}>
+                {isCurrentPlan(plan.id) ? 'Current Plan' : 'Select'}
+              </button>
+              {/* Trial/Proration Info */}
+              {plan.id === 'plan_pro' && !isCurrentPlan(plan.id) && (
+                <div className="trial-info">14-day free trial. Cancel anytime.</div>
+              )}
+              {isCurrentPlan(plan.id) && plan.id !== 'plan_free' && (
+                <div className="proration-info">Prorated billing applies to plan changes.</div>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Add-ons Section */}
+        <div className="addons-section addons-section-top">
+          <h4>Power Up with Add-ons</h4>
+          <div className="addons-grid">
+            {ADDONS.map((addon) => (
+              <div key={addon.id} className={`addon-card ${selectedAddons.includes(addon.id) ? 'selected' : ''}`} onClick={() => toggleAddon(addon.id)}>
+                <div className="addon-icon">{addon.icon}</div>
+                <div className="addon-info">
+                  <h5>{addon.name}</h5>
+                  <p>{addon.description}</p>
+                </div>
+                <div className="addon-price">
+                  <span>${addon.price.toFixed(2)}</span>
+                  <span className="period">/mo</span>
+                </div>
+                <div className="addon-checkbox">{selectedAddons.includes(addon.id) && <Check size={14} />}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       {tour.isActive && (
         <GuidedTour
           steps={settingsTourSteps}
@@ -174,7 +336,7 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
             <label className="toggle-switch-label">
-              <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+              <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} aria-label="Toggle dark mode" />
               <span className="slider"></span>
             </label>
           </div>
@@ -211,7 +373,7 @@ export const SettingsPage: React.FC = () => {
               <option value="MXN">MXN</option>
             </select>
           </div>
-          <div className="setting-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+          <div className="setting-row setting-row-no-border">
             <div className="setting-info">
               <Shield size={20} className="setting-icon" />
               <div>
@@ -238,7 +400,7 @@ export const SettingsPage: React.FC = () => {
         
         <div className="settings-grid">
           <div>
-            <label className="setting-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Preferred Payment Methods</label>
+            <label className="setting-label setting-label-block">Preferred Payment Methods</label>
             <div className="payout-methods-group">
               <label className="checkbox-label">
                 <input 
@@ -268,7 +430,7 @@ export const SettingsPage: React.FC = () => {
           </div>
           
           <div>
-            <label className="setting-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Minimum Withdrawal Threshold</label>
+            <label className="setting-label setting-label-block">Minimum Withdrawal Threshold</label>
             <div className="payout-methods-group">
               <label className="checkbox-label">
                 <input 
@@ -322,7 +484,7 @@ export const SettingsPage: React.FC = () => {
             <p className="export-description">CSV or JSON with all transactions, goals, and insights</p>
           </div>
           <div className="export-actions">
-            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')} className="setting-select">
+            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')} className="setting-select" aria-label="Export format">
               <option value="csv">CSV</option>
               <option value="json">JSON</option>
             </select>

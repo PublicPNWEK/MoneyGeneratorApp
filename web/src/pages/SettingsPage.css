@@ -1,3 +1,151 @@
+/* --- Subscription & Billing Polish --- */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.plan-card {
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  position: relative;
+}
+.plan-card.current {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-100);
+}
+.plan-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-info);
+  transform: translateY(-2px) scale(1.01);
+}
+.plan-header h4 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.plan-header p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.plan-pricing {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.97rem;
+  margin-bottom: 0.25rem;
+}
+.plan-features li:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.trial-info, .proration-info {
+  font-size: 0.9rem;
+  color: var(--color-info);
+  margin-top: 0.5rem;
+}
+.addons-section {
+  margin-top: 2rem;
+}
+.addons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.addon-card.selected {
+  border-color: var(--color-info);
+  background: rgba(59, 130, 246, 0.08);
+}
+.addon-icon {
+  font-size: 1.5rem;
+}
+.addon-info h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+.addon-info p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.addon-price {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-success);
+  margin-left: auto;
+}
+.addon-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  margin-left: 0.5rem;
+}
+.addon-card.selected .addon-checkbox {
+  background: var(--color-info);
+  border-color: var(--color-info);
+  color: white;
+}
+.billing-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.toggle-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.toggle-btn.active {
+  background: var(--color-info);
+  color: white;
+}
+.savings-badge {
+  background: var(--color-success);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
 /* Settings Page Styles */
 
 .settings-page {
@@ -38,6 +186,30 @@
 .settings-grid {
   display: grid;
   gap: var(--space-4);
+}
+
+.subscription-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.plans-grid-top {
+  margin-top: var(--space-4);
+}
+
+.addons-section-top {
+  margin-top: var(--space-6);
+}
+
+.setting-row-no-border {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-label-block {
+  display: block;
+  margin-bottom: 0.5rem;
 }
 
 .setting-row {

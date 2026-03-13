@@ -39,6 +39,7 @@
   border-bottom: 1px solid var(--border-color);
   padding: var(--space-4) var(--space-6);
   box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
