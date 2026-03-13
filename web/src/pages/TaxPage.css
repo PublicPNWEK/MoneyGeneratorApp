@@ -106,6 +106,20 @@
   opacity: 0.6;
 }
 
+.date-card.clickable {
+  cursor: pointer;
+}
+
+.quarter-label {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.quarter-due {
+  font-size: 0.9rem;
+  margin-bottom: var(--space-2);
+}
+
 .date-card.active {
   opacity: 1;
   border-color: var(--color-emerald-500);
@@ -153,6 +167,21 @@ body.dark .date-card.active {
 .deduction-title { font-weight: 600; }
 .deduction-desc { font-size: var(--text-sm); color: var(--text-secondary); }
 .deduction-value { font-weight: 700; }
+
+.deductions-title {
+  margin-bottom: var(--space-4);
+  font-weight: 700;
+  font-size: var(--text-xl);
+}
+
+.deduction-total-row {
+  background: var(--bg-secondary);
+  font-weight: 700;
+}
+
+.deduction-total-label {
+  padding-left: 3.5rem;
+}
 
 @media (max-width: 768px) {
   .tax-page {

@@ -78,19 +78,10 @@ export const DashboardPage: React.FC = () => {
         }}
       />
       {shouldShowTour && (
-        <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 40 }}>
+        <div className="floating-tour-cta">
           <button
             onClick={tour.startTour}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              fontWeight: '500',
-              fontSize: '0.9rem',
-            }}
+            className="floating-tour-btn"
           >
             🎯 Start Tour
           </button>

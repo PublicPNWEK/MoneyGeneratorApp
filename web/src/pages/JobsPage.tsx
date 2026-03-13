@@ -224,21 +224,12 @@ export const JobsPage: React.FC = () => {
           {shouldShowTour && (
             <button
               onClick={tour.startTour}
-              style={{
-                marginLeft: '1rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
+              className="tour-button"
             >
               🎯 Start Tour
             </button>
           )}
-          <div className="actions" style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="actions">
             <div className="search-box" data-tour="search-bar">
             <Search size={16} />
             <input
@@ -259,7 +250,7 @@ export const JobsPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="job-filters" data-tour="filter-panel" style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
+      <div className="job-filters" data-tour="filter-panel">
           <button className={`badge ${filterType === 'all' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`} onClick={() => setFilterType('all')}>All</button>
           <button className={`badge ${filterType === 'high' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`} onClick={() => setFilterType('high')}>Urgent</button>
           <button className={`badge ${filterType === 'delivery' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'}`} onClick={() => setFilterType('delivery')}>Delivery</button>
@@ -294,9 +285,8 @@ export const JobsPage: React.FC = () => {
         </div>
 
         <button 
-          className="btn-secondary"
+          className="btn-secondary comparison-toggle-btn"
           onClick={() => setShowComparison(!showComparison)}
-          style={{ height: 'fit-content', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <TrendingUp size={16} /> Maximize Earnings
         </button>

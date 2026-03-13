@@ -152,17 +152,17 @@ export const MileagePage: React.FC = () => {
         </button>
       </div>
 
-      <div className="summary-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="card" style={{ padding: '1.5rem' }}>
+      <div className="summary-cards">
+        <div className="card summary-card">
           <h4>Potential Deduction</h4>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#16a34a' }}>
+          <div className="summary-value summary-value-positive">
             ${totalDeduction.toFixed(2)}
           </div>
           <span className="text-sm text-secondary">Based on {IRS_RATE}/mile</span>
         </div>
-        <div className="card" style={{ padding: '1.5rem' }}>
+        <div className="card summary-card">
           <h4>Business Miles</h4>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
+          <div className="summary-value">
             {businessMiles.toFixed(1)} mi
           </div>
           <span className="text-sm text-secondary">This year</span>

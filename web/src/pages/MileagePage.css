@@ -144,6 +144,27 @@
   overflow: hidden;
 }
 
+.summary-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.summary-card {
+  padding: var(--space-6);
+}
+
+.summary-value {
+  font-size: var(--text-4xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-value-positive {
+  color: var(--color-emerald-600);
+}
+
 .section-header {
   padding: var(--space-4);
   border-bottom: 1px solid var(--border-color);
@@ -293,6 +314,11 @@ body.dark .chip-btn.personal {
 
   .tracker-stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+    margin-bottom: var(--space-6);
   }
 }
 

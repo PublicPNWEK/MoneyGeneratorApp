@@ -43,6 +43,12 @@
   align-items: center;
 }
 
+.comparison-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -293,4 +299,31 @@ body.dark .toggle-chip {
 body.dark .toggle-chip.active {
   background-color: var(--bg-elevated);
   color: var(--color-emerald-400);
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+  }
+
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .view-toggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tour-button {
+    margin-left: 0;
+  }
 }

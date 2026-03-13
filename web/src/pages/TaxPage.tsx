@@ -92,12 +92,11 @@ export const TaxPage: React.FC = () => {
           {QUARTERS.map((q, idx) => (
             <div 
               key={idx} 
-              className={`date-card ${q.status === 'Upcoming' ? 'active' : ''} ${q.paid ? 'paid' : ''}`}
+              className={`date-card ${q.status === 'Upcoming' ? 'active' : ''} ${q.paid ? 'paid' : ''} ${!q.paid ? 'clickable' : ''}`}
               onClick={() => !q.paid && handleManualPayment(q.q)}
-              style={{ cursor: !q.paid ? 'pointer' : 'default' }}
             >
-              <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>{q.q}</div>
-              <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>{q.due}</div>
+              <div className="quarter-label">{q.q}</div>
+              <div className="quarter-due">{q.due}</div>
               <div className={`badge ${q.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100'}`}>
                 {q.paid ? 'PAID' : q.status}
               </div>
@@ -107,7 +106,7 @@ export const TaxPage: React.FC = () => {
       </div>
 
       <div className="deductions-container">
-        <h3 style={{ marginBottom: '1rem', fontWeight: 700, fontSize: '1.25rem' }}>Tracked Deductions</h3>
+        <h3 className="deductions-title">Tracked Deductions</h3>
         <div className="deductions-list">
           {DEDUCTIONS.map((item) => (
             <div key={item.id} className="deduction-item">
@@ -121,8 +120,8 @@ export const TaxPage: React.FC = () => {
               </div>
             </div>
           ))}
-          <div className="deduction-item" style={{ background: 'var(--bg-secondary)', fontWeight: 700 }}>
-            <div style={{ paddingLeft: '3.5rem' }}>Total Potential Savings</div>
+          <div className="deduction-item deduction-total-row">
+            <div className="deduction-total-label">Total Potential Savings</div>
             <div className="text-emerald-600">
               ~${(totalDeductions * (SE_TAX_RATE + INCOME_TAX_RATE)).toLocaleString(undefined, { maximumFractionDigits: 0 })} in tax
             </div>
