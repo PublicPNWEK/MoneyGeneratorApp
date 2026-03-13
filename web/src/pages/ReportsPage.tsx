@@ -271,7 +271,7 @@ const ReportsPage: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `$${v}`} />
+                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v: number) => `$${v}`} />
                     <Tooltip content={renderCustomTooltip} />
                     <Area
                       type="monotone"

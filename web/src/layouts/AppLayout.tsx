@@ -86,7 +86,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
+              className={({ isActive }: { isActive: boolean }) => `sidebar-item ${isActive ? 'active' : ''}`}
               title={item.label}
             >
               <item.icon size={20} />
@@ -107,7 +107,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
           <NavLink
             key={item.path}
             to={item.path}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            className={({ isActive }: { isActive: boolean }) => `nav-item ${isActive ? 'active' : ''}`}
             title={item.label}
           >
             <item.icon className="nav-icon" size={24} />
