@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calculator, 
-  Calendar, 
   TrendingUp, 
   TrendingDown, 
   FileCheck, 

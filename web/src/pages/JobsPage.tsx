@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Briefcase, Search, Bell, MapPin, Star, DollarSign, TrendingUp, Wallet, Check } from 'lucide-react';
+import { Briefcase, Search, Bell, MapPin, Star, DollarSign, TrendingUp, Wallet } from 'lucide-react';
 import { JobCard } from '../components/JobCard';
 import { JobMap } from '../components/JobMap';
 import { MOCK_JOBS, Job } from '../data/mockJobs';
@@ -355,5 +355,6 @@ export const JobsPage: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };

@@ -113,17 +113,19 @@ export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
       });
 
       // Handle click on cluster to zoom in
-      map.on('click', 'clusters', (e) => {
+      map.on('click', 'clusters', async (e) => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
         const clusterId = features[0].properties['cluster_id'];
         
-        (map.getSource('jobs') as GeoJSONSource).getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err || !zoom) return;
+        try {
+          const zoom = await (map.getSource('jobs') as GeoJSONSource).getClusterExpansionZoom(clusterId);
           map.easeTo({
             center: (features[0].geometry as any).coordinates,
             zoom: zoom
           });
-        });
+        } catch (err) {
+          console.error('Error getting cluster zoom:', err);
+        }
       });
 
       // Handle click on individual job marker
