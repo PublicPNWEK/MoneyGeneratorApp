@@ -285,6 +285,13 @@ body.dark .nav-item.active {
 
   /* Improve bottom nav for safe area (notches) */
   .bottom-nav {
+    /* Prevent right-side items from being cut off when there are many tabs */
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    white-space: nowrap;
+
     padding-top: var(--space-2);
     padding-right: max(var(--space-2), env(safe-area-inset-right));
     padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
@@ -299,6 +306,7 @@ body.dark .nav-item.active {
   /* Better spacing between nav items on mobile */
   .bottom-nav .nav-item {
     min-width: 60px;
+    flex: 0 0 auto;
   }
 
   /* Improve input sizing for mobile keyboard */
