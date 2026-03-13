@@ -28,6 +28,7 @@ import {
   AreaChart,
 } from 'recharts';
 import './ReportsPage.css';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
 
 interface DateRange {
   start: Date;
@@ -72,7 +73,7 @@ const ReportsPage: React.FC = () => {
   const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
   const [platformData, setPlatformData] = useState<PlatformData[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  const userId = getUserId();
 
 
   // Debounce fetchReportData to avoid rapid re-renders
@@ -92,42 +93,61 @@ const ReportsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const userId = 'demo-user'; // Replace with real user ID if available
       const startDate = selectedRange.start.toISOString().slice(0, 10);
       const endDate = selectedRange.end.toISOString().slice(0, 10);
 
-      // Fetch summary analytics
-      const summaryRes = await fetch(`${apiUrl}/api/v2/analytics/summary?userId=${userId}&startDate=${startDate}&endDate=${endDate}`);
-      if (!summaryRes.ok) throw new Error('Failed to fetch analytics summary');
-      const summaryData = await summaryRes.json();
+      const [dashboard, incomeTrends, expenseTrends, incomeBreakdown] = await Promise.all([
+        apiFetchJson<any>('/api/v2/reporting/dashboard'),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=income`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=expense`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/breakdown?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&type=income`
+        ),
+      ]);
 
-      // Fetch platform breakdown
-      const breakdownRes = await fetch(`${apiUrl}/api/v2/analytics/breakdown?userId=${userId}&groupBy=platform&startDate=${startDate}&endDate=${endDate}`);
-      if (!breakdownRes.ok) throw new Error('Failed to fetch platform breakdown');
-      const breakdownData = await breakdownRes.json();
+      const incomeByDate = new Map<string, number>();
+      (incomeTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) incomeByDate.set(key, Number(d.amount) || 0);
+      });
+      const expenseByDate = new Map<string, number>();
+      (expenseTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) expenseByDate.set(key, Number(d.amount) || 0);
+      });
 
-      // Map summary timeSeries to earningsData
-      const earnings = (summaryData.timeSeries || []).map((d: any) => ({
-        date: d.date,
-        earnings: d.amount,
-        expenses: 0, // Optionally fetch expenses from another endpoint
-        net: d.amount, // Placeholder, update if net available
-      }));
-      setEarningsData(earnings);
+      const allDates = new Set<string>([...incomeByDate.keys(), ...expenseByDate.keys()]);
+      const mergedSeries = [...allDates]
+        .sort((a, b) => a.localeCompare(b))
+        .map((date) => {
+          const earnings = incomeByDate.get(date) || 0;
+          const expenses = expenseByDate.get(date) || 0;
+          return { date, earnings, expenses, net: earnings - expenses };
+        });
+      setEarningsData(mergedSeries);
 
-      // Map breakdown to platformData
-      const platforms = (breakdownData.byPlatform || []).map((p: any, i: number) => ({
-        name: p.platform,
-        value: p.amount,
+      const breakdown = (incomeBreakdown?.data || []) as Array<any>;
+      const platforms = breakdown.map((row: any, i: number) => ({
+        name: row.category || `Category ${i + 1}`,
+        value: Number(row.percentage) || 0,
         color: COLORS[i % COLORS.length],
       }));
       setPlatformData(platforms);
+
+      // Use dashboard metrics as a sanity check; if it returns no success, keep going with chart data
+      if (dashboard?.success === false) {
+        throw new Error(dashboard?.error || 'Failed to load reporting dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);
     }
-  }, [selectedRange, apiUrl]);
+  }, [selectedRange, userId]);
 
   const handleExport = async (format: 'csv' | 'pdf') => {
     if (format === 'csv') {

@@ -5,7 +5,66 @@ import { JobMap } from '../components/JobMap';
 import { MOCK_JOBS, Job } from '../data/mockJobs';
 import { useToast } from '../components/Toast';
 import { GuidedTour, useTourNavigation, useOnboarding } from '../utils/onboardingSystem';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
 import './JobsPage.css';
+
+type V2RecommendedJob = {
+  id: string;
+  title: string;
+  platform: string;
+  category?: string;
+  pay?: { amount?: number | string };
+  distance?: number;
+  rating?: number;
+  matches?: Array<{ type: string; label: string }>;
+};
+
+function toNumberPay(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.]+/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function mapV2JobToJob(rec: V2RecommendedJob): Job {
+  const categoryTag =
+    rec.category === 'delivery'
+      ? 'Delivery'
+      : rec.category === 'rideshare'
+        ? 'Driving'
+        : rec.category === 'tasks'
+          ? 'Tasks'
+          : rec.category === 'freelance'
+            ? 'Tech'
+            : rec.category === 'consulting'
+              ? 'Tech'
+              : 'Flexible';
+
+  return {
+    id: rec.id,
+    title: rec.title,
+    company: rec.platform,
+    pay: {
+      amount: toNumberPay(rec.pay?.amount),
+      unit: 'job',
+      currency: 'USD',
+    },
+    location: {
+      city: 'Nearby',
+      distance: typeof rec.distance === 'number' ? `${rec.distance.toFixed(1)} mi` : undefined,
+    },
+    tags: [categoryTag],
+    postedAt: new Date().toISOString(),
+    urgency: 'medium',
+    distanceMiles: rec.distance,
+    rating: rec.rating,
+    verified: true,
+    perks: (rec.matches || []).slice(0, 2).map((m) => m.label),
+  };
+}
 
 export const JobsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,9 +76,10 @@ export const JobsPage: React.FC = () => {
   const [jobStatus, setJobStatus] = useState<Record<string, 'saved' | 'applied'>>({});
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
+  const [jobsLoading, setJobsLoading] = useState(true);
   const { showToast } = useToast();
   const { markTutorialWatched, user } = useOnboarding();
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
   const jobBoardTourSteps = [
     {
@@ -59,16 +119,34 @@ export const JobsPage: React.FC = () => {
 
   const shouldShowTour = user.role && !user.tutorialsWatched.includes('jobboard-tour');
 
-  // Load persisted preferences
+  // Load jobs + saved state from backend
   useEffect(() => {
-    const loadPreferences = async () => {
+    const userId = getUserId();
+
+    const load = async () => {
+      setJobsLoading(true);
       try {
-        const res = await fetch(`${apiUrl}/api/v1/profile/settings?userId=demo-user`);
-        const payload = await res.json();
-        const prefs = payload.settings?.jobPreferences || {};
-        if (prefs.status) setJobStatus(prefs.status);
-        if (typeof prefs.alertsEnabled === 'boolean') setAlertsEnabled(prefs.alertsEnabled);
-      } catch {
+        const [recommended, saved, alerts] = await Promise.all([
+          apiFetchJson<{ recommendations: V2RecommendedJob[] }>(`/api/v2/jobs/recommended?userId=${encodeURIComponent(userId)}`),
+          apiFetchJson<{ savedJobs: Array<{ id: string }> }>(`/api/v2/jobs/saved?userId=${encodeURIComponent(userId)}`),
+          apiFetchJson<{ alerts: Array<{ isActive: boolean }> }>(`/api/v2/jobs/alerts?userId=${encodeURIComponent(userId)}`),
+        ]);
+
+        const mapped = (recommended.recommendations || []).map(mapV2JobToJob);
+        if (mapped.length > 0) setJobs(mapped);
+
+        const savedIds = new Set((saved.savedJobs || []).map((j) => j.id));
+        setJobStatus((prev) => {
+          const next: Record<string, 'saved' | 'applied'> = { ...prev };
+          savedIds.forEach((id) => {
+            if (next[id] !== 'applied') next[id] = 'saved';
+          });
+          return next;
+        });
+
+        setAlertsEnabled((alerts.alerts || []).some((a) => a.isActive));
+      } catch (e) {
+        // Fallback to local storage + mock jobs
         const saved = localStorage.getItem('jobs_status');
         const alerts = localStorage.getItem('jobs_alerts_enabled');
         if (saved) {
@@ -79,24 +157,14 @@ export const JobsPage: React.FC = () => {
           }
         }
         if (alerts) setAlertsEnabled(alerts === 'true');
-      }
-
-      try {
-        const res = await fetch(`${apiUrl}/api/v1/notifications/preferences?userId=demo-user`);
-        if (res.ok) {
-          const data = await res.json();
-          const jobPref = data.preferences?.new_job_match;
-          if (jobPref && typeof jobPref.push === 'boolean') {
-            setAlertsEnabled(jobPref.push);
-          }
-        }
-      } catch {
-        // best-effort load
+        setJobs(MOCK_JOBS);
+      } finally {
+        setJobsLoading(false);
       }
     };
 
-    loadPreferences();
-  }, [apiUrl]);
+    load();
+  }, []);
 
   // Persist preferences
   useEffect(() => {
@@ -107,47 +175,11 @@ export const JobsPage: React.FC = () => {
     localStorage.setItem('jobs_alerts_enabled', alertsEnabled ? 'true' : 'false');
   }, [alertsEnabled]);
 
-  const persistJobPreferences = useCallback(async (nextStatus: Record<string, 'saved' | 'applied'>, nextAlerts: boolean) => {
-    try {
-      await fetch(`${apiUrl}/api/v1/profile/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: 'demo-user',
-          settings: {
-            jobPreferences: {
-              status: nextStatus,
-              alertsEnabled: nextAlerts,
-            },
-          },
-        }),
-      });
-    } catch {
-      // best-effort persistence
-    }
-  }, [apiUrl]);
-
-  const syncNotificationPreference = useCallback(async (nextAlerts: boolean) => {
-    try {
-      await fetch(`${apiUrl}/api/v1/notifications/preferences`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: 'demo-user',
-          preferences: {
-            new_job_match: { push: nextAlerts, email: false, sms: false },
-          },
-        }),
-      });
-    } catch {
-      // ignore network errors
-    }
-  }, [apiUrl]);
+  const userId = getUserId();
 
   const handleApply = (job: Job) => {
     setJobStatus((prev) => {
       const next = { ...prev, [job.id]: 'applied' } as Record<string, 'saved' | 'applied'>;
-      persistJobPreferences(next, alertsEnabled);
       return next;
     });
     showToast(`Applied to ${job.title} at ${job.company}!`, 'success');
@@ -162,23 +194,40 @@ export const JobsPage: React.FC = () => {
       } else {
         next[job.id] = 'saved';
       }
-      persistJobPreferences(next, alertsEnabled);
       return next;
     });
+    apiFetchJson(`/api/v2/jobs/${encodeURIComponent(job.id)}/save`, {
+      method: 'POST',
+      body: { userId, saved: wasSaved },
+    }).catch(() => null);
     showToast(`${job.title} ${wasSaved ? 'removed from saved' : 'saved for later'}`, 'info');
   };
 
   const toggleAlerts = () => {
     setAlertsEnabled((prev) => {
       const next = !prev;
-      persistJobPreferences(jobStatus, next);
-      syncNotificationPreference(next);
+      if (next) {
+        apiFetchJson('/api/v2/jobs/alerts', {
+          method: 'POST',
+          body: {
+            userId,
+            name: 'Smart Job Alerts',
+            filters: {
+              minPay,
+              distance: maxDistance,
+              rating: minRating,
+              type: filterType,
+            },
+            channels: ['in-app'],
+          },
+        }).catch(() => null);
+      }
       showToast(next ? 'Job alerts enabled' : 'Job alerts paused', 'info');
       return next;
     });
   };
 
-  const filteredJobs = useMemo(() => MOCK_JOBS.filter(job => {
+  const filteredJobs = useMemo(() => jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           job.company.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -194,7 +243,7 @@ export const JobsPage: React.FC = () => {
     const matchesDistance = job.distanceMiles ? job.distanceMiles <= maxDistance : true;
     const matchesRating = job.rating ? job.rating >= minRating : true;
     return matchesSearch && matchesFilter && matchesPay && matchesDistance && matchesRating;
-  }), [filterType, maxDistance, minPay, minRating, searchTerm]);
+  }), [filterType, jobs, maxDistance, minPay, minRating, searchTerm]);
 
 
   // Derive map center from the first filtered job or default to SF
