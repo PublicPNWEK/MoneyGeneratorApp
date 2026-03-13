@@ -7,10 +7,11 @@ import { GuidedTour, useTourNavigation, useOnboarding, EducationalHint } from '.
 import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
-    const { userProfile, openCheckout } = useAppContext();
+  const { userProfile, openCheckout, upgradeSubscription, cancelSubscription } = useAppContext();
         // --- Billing/Subscription Management Enhancements ---
         const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
         const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+    const [billingAction, setBillingAction] = useState<null | 'cancel' | 'downgrade'>(null);
         const PLANS = [
           {
             id: 'plan_free',
@@ -64,20 +65,31 @@ export const SettingsPage: React.FC = () => {
           { id: 'addon_mileage', name: 'Mileage Tracker', price: 3.99, description: 'GPS-based automatic mileage logging with IRS reports', icon: '🚗' },
           { id: 'addon_receipts', name: 'Receipt Scanner', price: 2.99, description: 'OCR receipt capture and automatic expense categorization', icon: '🧾' },
         ];
-        const isCurrentPlan = (planId: string) => userProfile?.subscription === planId;
+        const currentPlanId = userProfile?.subscription ?? 'plan_free';
+        const isCurrentPlan = (planId: string) => currentPlanId === planId;
         const getPrice = (plan: any) => billingCycle === 'monthly' ? plan.price : plan.annualPrice / 12;
         const formatPrice = (price: number) => price === 0 ? 'Free' : `$${price.toFixed(2)}`;
         const handleSelectPlan = (planId: string) => {
           if (isCurrentPlan(planId)) return;
           openCheckout();
         };
-        const handleCancelPlan = () => {
-          // TODO: Integrate with backend cancel endpoint
-          showToast('Cancel subscription (not yet implemented)', 'info');
+        const handleCancelPlan = async () => {
+          if (billingAction) return;
+          setBillingAction('cancel');
+          try {
+            await cancelSubscription();
+          } finally {
+            setBillingAction(null);
+          }
         };
-        const handleDowngradePlan = () => {
-          // TODO: Integrate with backend downgrade endpoint
-          showToast('Downgrade to Free (not yet implemented)', 'info');
+        const handleDowngradePlan = async () => {
+          if (billingAction) return;
+          setBillingAction('downgrade');
+          try {
+            await upgradeSubscription('plan_free', [], { billingCycle: 'monthly' });
+          } finally {
+            setBillingAction(null);
+          }
         };
         const toggleAddon = (addonId: string) => {
           setSelectedAddons(prev => prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]);
@@ -192,13 +204,17 @@ export const SettingsPage: React.FC = () => {
               <CreditCard size={20} className="setting-icon" />
               <div>
                 <div className="setting-label">Current Plan</div>
-                <div className="setting-value">{userProfile.subscription ? PLANS.find(p => p.id === userProfile.subscription)?.name : 'Free'}</div>
+                <div className="setting-value">{PLANS.find(p => p.id === currentPlanId)?.name || 'Free'}</div>
               </div>
             </div>
-            {userProfile.subscription && userProfile.subscription !== 'plan_free' && (
+            {currentPlanId !== 'plan_free' && (
               <div className="subscription-actions">
-                <button className="button secondary" onClick={handleCancelPlan}>Cancel</button>
-                <button className="button secondary" onClick={handleDowngradePlan}>Downgrade to Free</button>
+                <button className="button secondary" onClick={handleCancelPlan} disabled={billingAction === 'cancel'}>
+                  {billingAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                </button>
+                <button className="button secondary" onClick={handleDowngradePlan} disabled={billingAction === 'downgrade'}>
+                  {billingAction === 'downgrade' ? 'Downgrading…' : 'Downgrade to Free'}
+                </button>
               </div>
             )}
           </div>

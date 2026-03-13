@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Briefcase, Search, Bell, MapPin, Star, DollarSign, TrendingUp, Wallet } from 'lucide-react';
 import { JobCard } from '../components/JobCard';
 import { JobMap } from '../components/JobMap';
@@ -77,7 +77,6 @@ export const JobsPage: React.FC = () => {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
   const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
-  const [jobsLoading, setJobsLoading] = useState(true);
   const { showToast } = useToast();
   const { markTutorialWatched, user } = useOnboarding();
 
@@ -124,7 +123,6 @@ export const JobsPage: React.FC = () => {
     const userId = getUserId();
 
     const load = async () => {
-      setJobsLoading(true);
       try {
         const [recommended, saved, alerts] = await Promise.all([
           apiFetchJson<{ recommendations: V2RecommendedJob[] }>(`/api/v2/jobs/recommended?userId=${encodeURIComponent(userId)}`),
@@ -158,8 +156,6 @@ export const JobsPage: React.FC = () => {
         }
         if (alerts) setAlertsEnabled(alerts === 'true');
         setJobs(MOCK_JOBS);
-      } finally {
-        setJobsLoading(false);
       }
     };
 

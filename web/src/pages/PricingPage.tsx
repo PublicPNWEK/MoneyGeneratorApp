@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Zap, Crown, Building2, CreditCard, Calendar, Shield, ArrowRight } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from '../components/Toast';
 import './PricingPage.css';
 
 interface Plan {
@@ -117,7 +118,11 @@ const ADDONS: Addon[] = [
 const PricingPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
-  const { openCheckout, userProfile } = useAppContext();
+  const { openCheckout, userProfile, upgradeSubscription, cancelSubscription } = useAppContext();
+  const { showToast } = useToast();
+  const [billingAction, setBillingAction] = useState<null | 'cancel' | 'downgrade'>(null);
+
+  const currentPlanId = userProfile?.subscription ?? 'plan_free';
 
   const annualSavings = Math.round(((14.99 * 12 - 119.88) / (14.99 * 12)) * 100);
 
@@ -144,17 +149,23 @@ const PricingPage: React.FC = () => {
   };
 
   const handleCancelPlan = () => {
-    // TODO: Integrate with backend cancel endpoint
-    alert('Cancel subscription (not yet implemented)');
+    if (billingAction) return;
+    setBillingAction('cancel');
+    cancelSubscription()
+      .catch(() => showToast('Cancel failed. Please retry.', 'error'))
+      .finally(() => setBillingAction(null));
   };
 
   const handleDowngradePlan = () => {
-    // TODO: Integrate with backend downgrade endpoint
-    alert('Downgrade to Free (not yet implemented)');
+    if (billingAction) return;
+    setBillingAction('downgrade');
+    upgradeSubscription('plan_free', [], { billingCycle: 'monthly' })
+      .catch(() => showToast('Downgrade failed. Please retry.', 'error'))
+      .finally(() => setBillingAction(null));
   };
 
   const isCurrentPlan = (planId: string) => {
-    return userProfile?.subscription === planId;
+    return currentPlanId === planId;
   };
 
   return (
@@ -166,11 +177,15 @@ const PricingPage: React.FC = () => {
           <p>Choose the plan that fits your gig economy lifestyle. All plans include a 14-day free trial.</p>
           {/* Current Plan Status */}
           <div className="current-plan-status">
-            <strong>Current Plan:</strong> {userProfile.subscription || 'Free'}
-            {userProfile.subscription && userProfile.subscription !== 'plan_free' && (
+            <strong>Current Plan:</strong> {currentPlanId}
+            {currentPlanId !== 'plan_free' && (
               <div className="current-plan-actions">
-                <button className="btn-secondary" onClick={handleCancelPlan}>Cancel</button>
-                <button className="btn-secondary" onClick={handleDowngradePlan}>Downgrade to Free</button>
+                <button className="btn-secondary" onClick={handleCancelPlan} disabled={billingAction === 'cancel'}>
+                  {billingAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                </button>
+                <button className="btn-secondary" onClick={handleDowngradePlan} disabled={billingAction === 'downgrade'}>
+                  {billingAction === 'downgrade' ? 'Downgrading…' : 'Downgrade to Free'}
+                </button>
               </div>
             )}
           </div>

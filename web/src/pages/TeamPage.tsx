@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Users, Plus, Shield, Wallet, BarChart3, Crown } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
 import './TeamPage.css';
 
 export const TeamPage: React.FC = () => {
@@ -22,14 +23,10 @@ export const TeamPage: React.FC = () => {
     { id: 3, action: 'Enabled shared wallet', date: '2026-03-08' },
   ]);
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-  const userId = 'demo-user';
-
   const refreshTeam = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/v2/team?userId=${encodeURIComponent(userId)}`);
-      if (!res.ok) throw new Error('team_fetch_failed');
-      const data = await res.json();
+      const userId = getUserId();
+      const data = await apiFetchJson<any>(`/api/v2/team?userId=${encodeURIComponent(userId)}`);
 
       setTeamPlan(data.plan || 'Enterprise');
       setMembers(Array.isArray(data.members) ? data.members : []);
@@ -45,9 +42,8 @@ export const TeamPage: React.FC = () => {
 
   const refreshAudit = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/v2/team/audit?userId=${encodeURIComponent(userId)}&limit=25`);
-      if (!res.ok) throw new Error('audit_fetch_failed');
-      const data = await res.json();
+      const userId = getUserId();
+      const data = await apiFetchJson<any>(`/api/v2/team/audit?userId=${encodeURIComponent(userId)}&limit=25`);
       const entries = Array.isArray(data.entries) ? data.entries : [];
       setAuditLog(entries.map((e: any, idx: number) => ({ id: e.id || idx, action: e.action, date: (e.date || '').slice(0, 10) })));
     } catch {
@@ -78,12 +74,11 @@ export const TeamPage: React.FC = () => {
 
     (async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/v2/team/invite`, {
+        const userId = getUserId();
+        await apiFetchJson('/api/v2/team/invite', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, email: newMemberEmail, role: selectedRole }),
+          body: { userId, email: newMemberEmail, role: selectedRole },
         });
-        if (!res.ok) throw new Error('invite_failed');
 
         setNewMemberEmail('');
         showToast(`Invite sent with ${selectedRole} access`, 'success');
@@ -99,12 +94,11 @@ export const TeamPage: React.FC = () => {
     (async () => {
       const nextEnabled = !sharedWalletEnabled;
       try {
-        const res = await fetch(`${apiUrl}/api/v2/team/shared-wallet`, {
+        const userId = getUserId();
+        await apiFetchJson('/api/v2/team/shared-wallet', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, enabled: nextEnabled }),
+          body: { userId, enabled: nextEnabled },
         });
-        if (!res.ok) throw new Error('shared_wallet_failed');
         setSharedWalletEnabled(nextEnabled);
         showToast(nextEnabled ? 'Shared wallet enabled' : 'Shared wallet paused', 'info');
         if (showAuditLog) await refreshAudit();
@@ -180,12 +174,11 @@ export const TeamPage: React.FC = () => {
                     const nextRole = e.target.value;
                     (async () => {
                       try {
-                        const res = await fetch(`${apiUrl}/api/v2/team/members/${encodeURIComponent(member.id)}/role`, {
+                        const userId = getUserId();
+                        await apiFetchJson(`/api/v2/team/members/${encodeURIComponent(member.id)}/role`, {
                           method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ userId, role: nextRole }),
+                          body: { userId, role: nextRole },
                         });
-                        if (!res.ok) throw new Error('role_update_failed');
                         setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: nextRole } : m));
                         showToast(`Updated ${member.name} to ${nextRole}`, 'success');
                         if (showAuditLog) await refreshAudit();

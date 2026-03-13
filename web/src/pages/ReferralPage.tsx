@@ -5,6 +5,7 @@ import ReferralCard from '../components/ReferralCard';
 import ReferralStats from '../components/ReferralStats';
 import ReferralLeaderboard from '../components/ReferralLeaderboard';
 import ShareButtons from '../components/ShareButtons';
+import { apiFetchJson } from '../lib/apiClient';
 
 interface ReferralData {
   code: string;
@@ -34,19 +35,36 @@ const ReferralPage: React.FC = () => {
     fetchLeaderboard();
   }, []);
 
+  const normalizeReferralResponse = (data: any): ReferralData => {
+    // API can return either:
+    // - { success, referralCode, stats: { totalInvitesCreated, ... } }
+    // - { success, code, expiresAt, creditAmount } (new code created)
+    const code = data?.code || data?.referralCode || 'MONEYGEN2026';
+    const stats = data?.stats || {};
+    const shareStats = stats?.shareStats || {};
+
+    return {
+      code,
+      stats: {
+        totalInvites: Number(stats?.totalInvitesCreated ?? stats?.totalInvites ?? 0),
+        totalSignups: Number(stats?.totalSignups ?? 0),
+        conversionRate: Number(stats?.conversionRate ?? 0),
+        creditsEarned: Number(stats?.creditsEarned ?? 0),
+        shareStats: {
+          whatsapp: Number(shareStats?.whatsapp ?? 0),
+          twitter: Number(shareStats?.twitter ?? 0),
+          email: Number(shareStats?.email ?? 0),
+          sms: Number(shareStats?.sms ?? 0),
+          directLink: Number(shareStats?.directLink ?? 0),
+        },
+      },
+    };
+  };
+
   const fetchReferralData = async () => {
     try {
-      const response = await fetch('/api/v2/referrals/me', {
-        headers: {
-          'x-user-id': localStorage.getItem('userId') || 'demo-user',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReferralData(data);
-      } else {
-        throw new Error('API unavailable');
-      }
+      const data = await apiFetchJson<any>('/api/v2/referrals/me');
+      setReferralData(normalizeReferralResponse(data));
     } catch (error) {
       console.warn('Failed to fetch referral data, using mock:', error);
       // Fallback mock data
@@ -55,8 +73,8 @@ const ReferralPage: React.FC = () => {
         stats: {
           totalInvites: 12,
           totalSignups: 4,
-          conversionRate: 0.33,
-          creditsEarned: 100,
+          conversionRate: 33,
+          creditsEarned: 20,
           shareStats: {
             whatsapp: 5,
             twitter: 3,
@@ -73,22 +91,16 @@ const ReferralPage: React.FC = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const response = await fetch('/api/v2/referrals/leaderboard?limit=10');
-      if (response.ok) {
-        const data = await response.json();
-        setLeaderboard(data.data || []);
-      } else {
-        throw new Error('API unavailable');
-      }
+      const data = await apiFetchJson<{ success: boolean; data?: any[] }>('/api/v2/referrals/leaderboard?limit=10');
+      setLeaderboard(Array.isArray(data?.data) ? data.data : []);
     } catch (error) {
       console.warn('Failed to fetch leaderboard:', error);
       // Fallback mock data
       setLeaderboard([
-        { rank: 1, user: 'Sarah K.', score: 450, avatar: null },
-        { rank: 2, user: 'Mike R.', score: 380, avatar: null },
-        { rank: 3, user: 'Priya D.', score: 320, avatar: null },
-        { rank: 4, user: 'You', score: 100, avatar: null, isCurrentUser: true },
-        { rank: 5, user: 'James L.', score: 80, avatar: null },
+        { rank: 1, userId: 'sarah', totalSignups: 12, creditsEarned: 60, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah' },
+        { rank: 2, userId: 'mike', totalSignups: 10, creditsEarned: 50, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mike' },
+        { rank: 3, userId: 'priya', totalSignups: 8, creditsEarned: 40, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=priya' },
+        { rank: 4, userId: 'you', totalSignups: 4, creditsEarned: 20, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=you' },
       ]);
     }
   };
@@ -104,10 +116,9 @@ const ReferralPage: React.FC = () => {
   const handleTrackShare = async (channel: string) => {
     if (!referralData?.code) return;
     try {
-      await fetch('/api/v2/referrals/track-share', {
+      await apiFetchJson('/api/v2/referrals/track-share', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: referralData.code, channel }),
+        body: { code: referralData.code, channel },
       });
     } catch (error) {
       console.error('Failed to track share:', error);

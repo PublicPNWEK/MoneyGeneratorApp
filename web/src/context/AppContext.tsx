@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '../components/Toast';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
 
 type BillingCycle = 'monthly' | 'annual';
 
@@ -40,7 +41,9 @@ interface AppContextType {
   openCheckout: () => void;
   closeCheckout: () => void;
   connectBank: () => void;
-  upgradeSubscription: (planId: string, addons: string[], options?: UpgradeOptions) => void;
+  upgradeSubscription: (planId: string, addons: string[], options?: UpgradeOptions) => Promise<void>;
+  cancelSubscription: (reason?: string) => Promise<void>;
+  refreshSubscription: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -83,7 +86,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const { showToast } = useToast();
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+  type BackendPlan = 'basic' | 'pro' | 'enterprise';
+
+  const uiPlanToBackend = (planId: string): BackendPlan => {
+    if (planId === 'plan_free') return 'basic';
+    if (planId === 'plan_pro') return 'pro';
+    if (planId === 'plan_enterprise') return 'enterprise';
+    if (planId === 'basic' || planId === 'pro' || planId === 'enterprise') return planId;
+    return 'basic';
+  };
+
+  const backendPlanToUi = (plan: string | null | undefined): string | null => {
+    if (!plan || plan === 'basic') return null;
+    if (plan === 'pro') return 'plan_pro';
+    if (plan === 'enterprise') return 'plan_enterprise';
+    // If backend ever returns UI ids, pass through.
+    if (plan === 'plan_free') return null;
+    if (plan === 'plan_pro' || plan === 'plan_enterprise') return plan;
+    return null;
+  };
 
   useEffect(() => {
     const onboardingComplete = localStorage.getItem('onboarding_complete');
@@ -95,6 +117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setUserProfile(prev => ({ ...prev, role: storedRole }));
         }
     }
+    refreshSubscription().catch(() => null);
     fetchProducts();
   }, []);
 
@@ -110,25 +133,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [showToast]);
 
   const fetchProducts = async () => {
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const data = await apiFetchJson<{ success: boolean; plans?: Array<{ id: string; name: string; description?: string; price?: { monthly?: number | null; annual?: number | null } }> }>(
+        '/api/v2/subscriptions/plans'
+      );
 
-      const response = await fetch(`${apiUrl}/catalog`, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      if (data?.success && Array.isArray(data.plans)) {
+        const plansAsProducts: Product[] = data.plans.map((p) => {
+          const uiId = p.id === 'basic' ? 'plan_free' : p.id === 'pro' ? 'plan_pro' : p.id === 'enterprise' ? 'plan_enterprise' : `plan_${p.id}`;
+          const monthly = p.price?.monthly;
+          const priceText = monthly === null || monthly === undefined ? 'Custom' : monthly === 0 ? 'Free' : `$${Number(monthly).toFixed(2)}/mo`;
+          return {
+            id: uiId,
+            type: 'plan',
+            name: p.name,
+            price: priceText,
+            description: p.description || '',
+          };
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.products && Array.isArray(data.products)) {
-          setProducts(data.products);
-          setApiConnected(true);
-        }
+        // Preserve any non-plan demo products for now (add-ons / one-time).
+        const nonPlans = DEMO_PRODUCTS.filter((p) => p.type !== 'plan');
+        setProducts([...plansAsProducts, ...nonPlans]);
+        setApiConnected(true);
+        return;
       }
+    } catch {
+      // fall back below
+    }
+
+    setApiConnected(false);
+  };
+
+  const refreshSubscription = useCallback(async () => {
+    try {
+      const data = await apiFetchJson<{ success: boolean; subscription?: { plan?: string | null } }>('/api/v2/subscriptions');
+      const uiPlan = backendPlanToUi(data?.subscription?.plan);
+      setUserProfile((prev) => ({ ...prev, subscription: uiPlan }));
+      setApiConnected(true);
     } catch {
       setApiConnected(false);
     }
-  };
+  }, []);
 
   const connectBank = useCallback(() => {
     showToast('Opening bank connection...', 'info');
@@ -148,43 +194,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } = options;
     setIsCheckoutOpen(false);
     try {
-      const response = await fetch(`${apiUrl}/purchase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer demo-user' },
-        body: JSON.stringify({
-          productId: planId,
-          userId: 'demo-user',
-          addons,
-          billingCycle,
-          paymentMethod,
-          savedMethodId,
-          autoRetry,
-          rememberMethod,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Checkout failed');
+      const backendPlan = uiPlanToBackend(planId);
+      const userId = getUserId();
+
+      // If user is selecting Pro from Free, start a trial (best-effort).
+      if (backendPlan === 'pro' && !userProfile.subscription) {
+        const trialResult = await apiFetchJson<{ success: boolean; subscription?: { plan?: string | null } }>('/api/v2/subscriptions/trial', {
+          method: 'POST',
+          body: { days: 14, userId },
+        });
+        setUserProfile((prev) => ({ ...prev, subscription: backendPlanToUi(trialResult?.subscription?.plan) }));
+        showToast('14-day Pro trial activated.', 'success');
+        return;
       }
-      await response.json();
-      setUserProfile((prev) => ({ ...prev, subscription: planId }));
+
+      const result = await apiFetchJson<{ success: boolean; subscription?: { plan?: string | null } }>('/api/v2/subscriptions/upgrade', {
+        method: 'POST',
+        body: { plan: backendPlan, billingCycle, userId, addons, paymentMethod, savedMethodId, autoRetry, rememberMethod },
+      });
+
+      setUserProfile((prev) => ({ ...prev, subscription: backendPlanToUi(result?.subscription?.plan) }));
       const addonText = addons.length > 0 ? ` with ${addons.length} add-on(s)` : '';
       showToast(`Subscribed to ${planId}${addonText} (${billingCycle}).`, 'success');
-
-      // emit metrics (best effort)
-      fetch(`${apiUrl}/metrics/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'checkout.completed',
-          userId: 'demo-user',
-          properties: { planId, addons, billingCycle, paymentMethod, savedMethodId, autoRetry, rememberMethod },
-        }),
-      }).catch(() => null);
     } catch (err) {
       console.error(err);
       showToast('Payment failed. Please try again.', 'error');
     }
-  }, [apiUrl, showToast]);
+  }, [showToast, userProfile.subscription]);
+
+  const cancelSubscription = useCallback(async (reason?: string) => {
+    try {
+      const userId = getUserId();
+      const result = await apiFetchJson<{ success: boolean; subscription?: { plan?: string | null } }>('/api/v2/subscriptions/cancel', {
+        method: 'POST',
+        body: { reason, userId },
+      });
+      setUserProfile((prev) => ({ ...prev, subscription: backendPlanToUi(result?.subscription?.plan) }));
+      showToast('Subscription cancelled.', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Cancel failed. Please retry.', 'error');
+    }
+  }, [showToast]);
 
   const openCheckout = () => setIsCheckoutOpen(true);
   const closeCheckout = () => setIsCheckoutOpen(false);
@@ -203,6 +254,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closeCheckout,
         connectBank,
         upgradeSubscription,
+        cancelSubscription,
+        refreshSubscription,
       }}
     >
       {children}
