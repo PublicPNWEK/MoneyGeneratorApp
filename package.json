@@ -8,6 +8,8 @@
     "build": "cd web && npm run build",
     "preview": "cd web && npm run preview",
     "lint": "cd web && npm run lint",
+    "provision": "node scripts/provision.mjs --fix",
+    "provision:check": "node scripts/provision.mjs",
     "test": "npm run test:server",
     "test:server": "npm test --prefix server",
     "deploy": "scripts/deploy.sh production",

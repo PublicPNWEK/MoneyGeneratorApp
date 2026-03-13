@@ -76,6 +76,19 @@ git push origin main
 
 Use the `npm run deploy` command for manual deployments with validation.
 
+### Provision / Prereq Check (Idempotent)
+
+Run the provisioning checks before deploying (safe to rerun):
+
+```bash
+npm run provision:check
+
+# Apply safe, minimal fixes (e.g., create placeholder directories)
+npm run provision
+```
+
+Tip: If you're working inside `web/`, you can also run `node scripts/provision.mjs` from that folder.
+
 ### Production Deployment
 
 ```bash
