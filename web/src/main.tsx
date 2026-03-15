@@ -6,7 +6,12 @@ import './index.css'
 // PWA Service Worker Registration is temporarily disabled
 // to fix Netlify deployment issues.
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('[MoneyGeneratorApp] Root DOM element #root not found. Check index.html.');
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>,

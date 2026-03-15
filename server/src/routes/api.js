@@ -14,8 +14,8 @@ import { AnalyticsService } from '../services/analytics.js';
 import { ComplianceService } from '../services/compliance.js';
 import { MarketplaceService } from '../services/marketplace.js';
 import { CreditsService } from '../services/credits.js';
-import { validate, validateQuery } from '../validation.js';
-import { cacheMiddleware, cacheUtils } from '../cache.js';
+import { validate } from '../validation.js';
+import { cacheMiddleware } from '../cache.js';
 import { MetricsService } from '../metrics.js';
 
 const router = express.Router();
