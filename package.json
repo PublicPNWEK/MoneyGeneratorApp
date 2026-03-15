@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "cd web && npm run dev",
     "build": "cd web && npm run build",
+    "build:budget": "cd web && npm run build:budget",
+    "analyze": "cd web && npm run analyze",
     "preview": "cd web && npm run preview",
     "lint": "cd web && npm run lint",
     "provision": "node scripts/provision.mjs --fix",
