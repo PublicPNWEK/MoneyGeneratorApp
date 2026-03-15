@@ -13,11 +13,24 @@
     "test": "npm run test:server",
     "test:server": "npm test --prefix server",
     "deploy": "scripts/deploy.sh production",
-    "deploy:staging": "scripts/deploy.sh staging"
+    "deploy:staging": "scripts/deploy.sh staging",
+    "prepare": "node -e \"process.env.CI ? process.exit(0) : require(\"child_process\").execSync(\"husky\")\""
   },
   "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0"
+  },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{js,ts,tsx,json,md}": [
+      "prettier --write --ignore-unknown"
+    ]
   }
 }
