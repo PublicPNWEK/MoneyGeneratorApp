@@ -6,7 +6,7 @@ import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
 import { useNavigate } from 'react-router-dom';
 import { apiFetchJson, getUserId } from '../lib/apiClient';
-import { SkeletonMetricCard, SkeletonCard, Skeleton } from '../components';
+import { ErrorState, SkeletonMetricCard, SkeletonCard, Skeleton } from '../components';
 import './DashboardPageV2.css';
 
 interface StatItem {
@@ -38,6 +38,15 @@ interface AnalyticsSummary {
   };
 }
 
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  occurredAt: string;
+  amount?: number | null;
+}
+
 export const DashboardPageV2: React.FC = () => {
   const { userProfile, connectBank, openCheckout } = useAppContext();
   const { showToast } = useToast();
@@ -47,22 +56,34 @@ export const DashboardPageV2: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
 
   // Fetch analytics data from backend
   const fetchDashboardData = useCallback(async (showLoading = true) => {
     if (showLoading) setIsRefreshing(true);
-    
-    try {
-      const userId = getUserId();
-      
-      // Fetch analytics summary from API
-      const analyticsData = await apiFetchJson<{
-        summary: AnalyticsSummary;
-      }>(`/api/v2/analytics/summary?userId=${encodeURIComponent(userId)}&period=30d`);
 
-      const summary = analyticsData?.summary;
-      
-      if (summary) {
+    const userId = getUserId();
+    if (!userId) {
+      setStats([]);
+      setActivity([]);
+      setLoadError('Sign in to view your dashboard.');
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    try {
+      const [analyticsResult, activityResult] = await Promise.allSettled([
+        apiFetchJson<{
+        summary: AnalyticsSummary;
+      }>(`/api/v2/analytics/summary?userId=${encodeURIComponent(userId)}&period=30d`),
+        apiFetchJson<{ items?: ActivityItem[] }>(`/api/v2/activity/recent?userId=${encodeURIComponent(userId)}&limit=5`),
+      ]);
+
+      if (analyticsResult.status === 'fulfilled' && analyticsResult.value?.summary) {
+        const summary = analyticsResult.value.summary;
         setStats([
           {
             label: 'Total Earnings',
@@ -76,53 +97,36 @@ export const DashboardPageV2: React.FC = () => {
           {
             label: 'Net Income',
             value: `$${summary.netIncome.toLocaleString()}`,
-            trend: { direction: 'up', percent: 8 },
           },
           {
             label: 'Hourly Rate',
             value: `$${summary.hourlyRate.toFixed(2)}`,
-            trend: { direction: 'up', percent: 5 },
           },
           {
             label: 'Hours Worked',
             value: summary.hoursWorked.toFixed(1),
-            trend: { direction: 'down', percent: -2 },
           },
         ]);
+        setLoadError(null);
+      } else {
+        setStats([]);
+        setLoadError('Live dashboard analytics could not be loaded.');
       }
-      
+
+      if (activityResult.status === 'fulfilled') {
+        setActivity(activityResult.value?.items || []);
+        setActivityError(null);
+      } else {
+        setActivity([]);
+        setActivityError('Recent activity is unavailable right now.');
+      }
+
       setLastUpdated(new Date());
-    } catch (error) {
-      console.warn('Failed to fetch analytics, using defaults:', error);
-      // Fall back to user profile data
-      setStats([
-        {
-          label: 'Total Earnings',
-          value: `$${userProfile.earnings.toLocaleString()}`,
-          trend: { direction: 'up', percent: userProfile.weeklyChange },
-          icon: <TrendingUp size={20} />,
-        },
-        {
-          label: 'This Week',
-          value: `$${(userProfile.earnings / 4).toLocaleString()}`,
-          trend: { direction: 'up', percent: 8 },
-        },
-        {
-          label: 'Hourly Rate',
-          value: '$17.50',
-          trend: { direction: 'up', percent: 5 },
-        },
-        {
-          label: 'Hours Worked',
-          value: '142.5',
-          trend: { direction: 'down', percent: -2 },
-        },
-      ]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [userProfile]);
+  }, []);
 
   // Fetch data on mount
   useEffect(() => {
@@ -151,7 +155,7 @@ export const DashboardPageV2: React.FC = () => {
       {
         type: 'neutral',
         title: 'Tax Reserve Check',
-        description: 'You are pacing $38 under your weekly tax reserve target. Adjust if needed.',
+        description: 'Review your latest tax summary and reserve targets before your next estimated payment.',
         action: {
           label: 'View Reserves',
           onClick: async () => {
@@ -210,12 +214,36 @@ export const DashboardPageV2: React.FC = () => {
 
   const handleLoadActivity = async () => {
     try {
-      const data = await apiFetchJson<any>('/api/v2/activity/recent?limit=50');
+      const userId = getUserId();
+      const data = await apiFetchJson<any>(`/api/v2/activity/recent?userId=${encodeURIComponent(userId)}&limit=50`);
+      setActivity(Array.isArray(data?.items) ? data.items.slice(0, 5) : []);
+      setActivityError(null);
       const count = Array.isArray(data?.items) ? data.items.length : 0;
       showToast(`Loaded ${count} activity items.`, 'success');
     } catch {
+      setActivityError('Unable to load activity. Please retry.');
       showToast('Unable to load activity. Please retry.', 'error');
     }
+  };
+
+  const formatActivityTime = (value: string) => {
+    const date = new Date(value);
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Less than an hour ago';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getActivityIcon = (item: ActivityItem) => {
+    if (item.type === 'expense') return '⛽';
+    if (item.type === 'income') return '💸';
+    if (item.type === 'milestone') return '🎯';
+    if (item.type === 'subscription') return '💳';
+    return '📌';
   };
 
   if (isLoading) {
@@ -285,25 +313,35 @@ export const DashboardPageV2: React.FC = () => {
 
       {/* Stats Grid */}
       <section className="dashboard-stats">
-        <div className="stats-grid">
-          {stats.map((stat, idx) => (
-            <Card key={idx} elevated>
-              <div className="stat-card-content">
-                <div className="stat-card-header">
-                  <span className="stat-label">{stat.label}</span>
-                  {stat.icon && <span className="stat-icon">{stat.icon}</span>}
-                </div>
-                <div className="stat-card-value">{stat.value}</div>
-                {stat.trend && (
-                  <div className={`stat-trend stat-trend-${stat.trend.direction}`}>
-                    {stat.trend.direction === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(stat.trend.percent)}% from last week
+        {loadError && stats.length === 0 ? (
+          <ErrorState
+            type="server"
+            title="Dashboard unavailable"
+            message={loadError}
+            onRetry={handleRefresh}
+            isRetrying={isRefreshing}
+          />
+        ) : (
+          <div className="stats-grid">
+            {stats.map((stat, idx) => (
+              <Card key={idx} elevated>
+                <div className="stat-card-content">
+                  <div className="stat-card-header">
+                    <span className="stat-label">{stat.label}</span>
+                    {stat.icon && <span className="stat-icon">{stat.icon}</span>}
                   </div>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+                  <div className="stat-card-value">{stat.value}</div>
+                  {stat.trend && (
+                    <div className={`stat-trend stat-trend-${stat.trend.direction}`}>
+                      {stat.trend.direction === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      {Math.abs(stat.trend.percent)}% from last week
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Insights & Alerts */}
@@ -375,32 +413,35 @@ export const DashboardPageV2: React.FC = () => {
         <h2 className="section-title">Recent Activity</h2>
         <Card>
           <CardBody>
-            <div className="activity-list">
-              <div className="activity-item">
-                <div className="activity-icon">📦</div>
-                <div className="activity-details">
-                  <p className="activity-title">Package Delivery - Downtown</p>
-                  <p className="activity-time">Today at 2:30 PM</p>
-                </div>
-                <div className="activity-amount">+$45.00</div>
+            {activityError && activity.length === 0 ? (
+              <ErrorState
+                type="server"
+                title="Activity unavailable"
+                message={activityError}
+                onRetry={handleLoadActivity}
+                inline
+                size="sm"
+              />
+            ) : activity.length === 0 ? (
+              <div className="activity-empty">No recent activity yet.</div>
+            ) : (
+              <div className="activity-list">
+                {activity.map((item) => (
+                  <div key={item.id} className="activity-item">
+                    <div className="activity-icon">{getActivityIcon(item)}</div>
+                    <div className="activity-details">
+                      <p className="activity-title">{item.title}</p>
+                      <p className="activity-time">{formatActivityTime(item.occurredAt)}</p>
+                    </div>
+                    {typeof item.amount === 'number' && (
+                      <div className={`activity-amount ${item.amount < 0 ? '-amount' : ''}`}>
+                        {item.amount >= 0 ? '+' : '-'}${Math.abs(item.amount).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="activity-item">
-                <div className="activity-icon">🚗</div>
-                <div className="activity-details">
-                  <p className="activity-title">Rideshare Earnings</p>
-                  <p className="activity-time">Today at 12:15 PM</p>
-                </div>
-                <div className="activity-amount">+$32.50</div>
-              </div>
-              <div className="activity-item">
-                <div className="activity-icon">⛽</div>
-                <div className="activity-details">
-                  <p className="activity-title">Gas Expense</p>
-                  <p className="activity-time">Yesterday at 6:00 PM</p>
-                </div>
-                <div className="activity-amount">-$45.00</div>
-              </div>
-            </div>
+            )}
           </CardBody>
           <CardFooter align="center">
             <Button variant="ghost" onClick={handleLoadActivity}>

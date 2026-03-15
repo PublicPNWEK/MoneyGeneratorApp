@@ -55,8 +55,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     role: null,
     bankConnected: false,
     subscription: null,
-    earnings: 2847,
-    weeklyChange: 12,
+    earnings: 0,
+    weeklyChange: 0,
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [apiConnected, setApiConnected] = useState(false);

@@ -22,11 +22,22 @@ async function requireOperator(req, res, next) {
 }
 
 router.get('/overview', requireOperator, (req, res) => {
-  res.json(OpsService.getOverview());
+  OpsService.getOverview()
+    .then((overview) => res.json(overview))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to load overview' }));
 });
 
 router.get('/incidents', requireOperator, (req, res) => {
-  res.json({ incidents: OpsService.listIncidents() });
+  OpsService.listIncidents()
+    .then((incidents) => res.json({ incidents }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to load incidents' }));
+});
+
+router.get('/annotations', requireOperator, (req, res) => {
+  const limit = Math.max(1, Math.min(Number(req.query.limit || 20), 100));
+  OpsService.listAnnotations(limit)
+    .then((annotations) => res.json({ annotations }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to load annotations' }));
 });
 
 router.post('/incidents', requireOperator, (req, res) => {
@@ -34,7 +45,9 @@ router.post('/incidents', requireOperator, (req, res) => {
   if (!source || !title) {
     return res.status(400).json({ error: 'source and title are required' });
   }
-  res.status(201).json({ incident: OpsService.createIncident({ source, severity, title, details }) });
+  OpsService.createIncident({ source, severity, title, details })
+    .then((incident) => res.status(201).json({ incident }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to create incident' }));
 });
 
 router.post('/annotations', requireOperator, (req, res) => {
@@ -43,7 +56,9 @@ router.post('/annotations', requireOperator, (req, res) => {
     return res.status(400).json({ error: 'targetType, targetId, and note are required' });
   }
   const author = req.user?.email || req.user?.id || 'operator';
-  res.status(201).json({ annotation: OpsService.annotate({ targetType, targetId, note, author }) });
+  OpsService.annotate({ targetType, targetId, note, author })
+    .then((annotation) => res.status(201).json({ annotation }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to create annotation' }));
 });
 
 router.post('/replays/outbound/:jobId', requireOperator, (req, res) => {
@@ -61,24 +76,28 @@ router.post('/replays/outbound/:jobId', requireOperator, (req, res) => {
     outcome: 'queued_for_replay',
     operator: req.user?.email || req.user?.id || 'operator',
     details: { targetUrl: job.targetUrl },
-  });
-
-  res.json({ replay, job });
+  })
+    .then((replay) => res.json({ replay, job }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to queue replay' }));
 });
 
 router.post('/background-jobs/:jobKey/heartbeat', requireOperator, (req, res) => {
   const { queueName = 'default', status = 'running', metadata = {} } = req.body || {};
-  const job = OpsService.updateBackgroundJob({ jobKey: req.params.jobKey, queueName, status, metadata });
-  res.json({ job });
+  OpsService.updateBackgroundJob({ jobKey: req.params.jobKey, queueName, status, metadata })
+    .then((job) => res.json({ job }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to update background job' }));
 });
 
 router.get('/queue-health', requireOperator, (req, res) => {
-  const overview = OpsService.getOverview();
-  res.json({
-    outboundQueue: overview.outboundQueue,
-    backgroundJobs: overview.backgroundJobs,
-    recentReplayOutcomes: overview.replayOutcomes,
-  });
+  OpsService.getOverview()
+    .then((overview) => {
+      res.json({
+        outboundQueue: overview.outboundQueue,
+        backgroundJobs: overview.backgroundJobs,
+        recentReplayOutcomes: overview.replayOutcomes,
+      });
+    })
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to load queue health' }));
 });
 
 router.get('/webhooks', requireOperator, (req, res) => {
@@ -103,9 +122,9 @@ router.post('/webhooks/:eventId/annotations', requireOperator, (req, res) => {
     targetId: req.params.eventId,
     note,
     author: req.user?.email || req.user?.id || 'operator',
-  });
-
-  res.status(201).json({ annotation });
+  })
+    .then((created) => res.status(201).json({ annotation: created }))
+    .catch((error) => res.status(500).json({ error: error.message || 'Failed to create annotation' }));
 });
 
 router.get('/search', requireOperator, (req, res) => {
@@ -113,7 +132,9 @@ router.get('/search', requireOperator, (req, res) => {
   if (!query) {
     return res.status(400).json({ error: 'q is required' });
   }
-  res.json(OpsService.search(query));
+  OpsService.search(query)
+    .then((results) => res.json(results))
+    .catch((error) => res.status(500).json({ error: error.message || 'Search failed' }));
 });
 
 export default router;

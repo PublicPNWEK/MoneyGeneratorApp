@@ -211,7 +211,11 @@ router.post('/jobs/alerts', (req, res) => {
   }
 
   const alert = GigPlatformService.upsertJobAlert({ userId, name, filters, channels: channels || ['email', 'in-app'] });
-  res.json(alert);
+  res.json({
+    alertId: alert.id,
+    isActive: alert.isActive,
+    alert,
+  });
 });
 
 // Get user's job alerts

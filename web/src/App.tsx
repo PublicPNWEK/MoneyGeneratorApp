@@ -8,7 +8,7 @@ import { OnboardingProvider } from './utils/onboardingSystem';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { Checkout } from './components/Checkout';
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute';
-import { DashboardPage } from './pages/DashboardPage';
+import { DashboardPageV2 } from './pages/DashboardPageV2';
 import { ProductsPage } from './pages/ProductsPage';
 import { JobsPage } from './pages/JobsPage';
 import { TeamPage } from './pages/TeamPage';
@@ -22,6 +22,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ConnectDashboard } from './pages/ConnectDashboard';
+import OpsPage from './pages/OpsPage';
 import { Storefront, StorefrontSuccess } from './pages/Storefront';
 import './index.css';
 import './App.css';
@@ -83,7 +84,7 @@ const AppRoutes = () => {
             <AppLayout />
           </ProtectedRoute>
         }>
-          <Route index element={<DashboardPage />} />
+          <Route index element={<DashboardPageV2 />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="jobs" element={<JobsPage />} />
           <Route path="team" element={<TeamPage />} />
@@ -93,6 +94,7 @@ const AppRoutes = () => {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="mileage" element={<MileagePage />} />
           <Route path="taxes" element={<TaxPage />} />
+          <Route path="ops" element={<OpsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           
           {/* Stripe Connect routes */}

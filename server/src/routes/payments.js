@@ -254,7 +254,7 @@ router.post('/webhook', async (req, res) => {
     event = verifyWebhookSignature(req.body, signature);
   } catch (error) {
     console.error('Webhook signature verification failed:', error.message);
-    OpsService.createIncident({
+    await OpsService.createIncident({
       source: 'stripe.webhook',
       severity: 'warning',
       title: 'Stripe webhook signature verification failed',
@@ -265,7 +265,7 @@ router.post('/webhook', async (req, res) => {
 
   const recorded = recordStripeWebhookEvent(event, correlationId);
   if (recorded.duplicate) {
-    OpsService.recordReplayOutcome({
+    await OpsService.recordReplayOutcome({
       targetId: event.id,
       outcome: 'duplicate_ignored',
       operator: 'system',
@@ -290,7 +290,7 @@ router.post('/webhook', async (req, res) => {
       stored.failureReason = error.message;
       stored.failedAt = new Date().toISOString();
     }
-    OpsService.createIncident({
+    await OpsService.createIncident({
       source: 'stripe.webhook',
       severity: 'critical',
       title: `Stripe webhook processing failed: ${event.type}`,
