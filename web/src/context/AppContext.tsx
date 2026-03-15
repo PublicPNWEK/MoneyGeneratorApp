@@ -137,7 +137,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // ignore
       }
     })();
-    fetchProducts();
+    _fetchProducts();
   }, []);
 
   const updateRole = useCallback((role: UserRole) => {

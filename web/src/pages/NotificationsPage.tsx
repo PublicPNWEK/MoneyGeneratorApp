@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Trash2, Filter, RefreshCw, Loader2, Settings, AlertCircle, TrendingUp, Calendar, DollarSign, Briefcase, Target, Gift, Info } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, RefreshCw, Loader2, Settings, AlertCircle, TrendingUp, Calendar, DollarSign, Briefcase, Target, Gift, Info } from 'lucide-react';
 import { Card, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';

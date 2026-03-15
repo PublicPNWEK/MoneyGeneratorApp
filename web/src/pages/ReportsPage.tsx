@@ -160,7 +160,7 @@ const ReportsPage: React.FC = () => {
       const startDate = selectedRange.start.toISOString().slice(0, 10);
       const endDate = selectedRange.end.toISOString().slice(0, 10);
 
-      const [dashboard, incomeTrends, expenseTrends, incomeBreakdown] = await Promise.all([
+      const [, incomeTrends, expenseTrends, incomeBreakdown] = await Promise.all([
         apiFetchJson<any>('/api/v2/reporting/dashboard'),
         apiFetchJson<any>(
           `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=income`
@@ -371,7 +371,6 @@ const ReportsPage: React.FC = () => {
   ];
 
   const [customChartType, setCustomChartType] = useState('line');
-  const [customChartField, setCustomChartField] = useState('earnings');
   
   // Enhanced chart builder state
   const [selectedMetrics, setSelectedMetrics] = useState<{ field: string; color: string; label: string }[]>([

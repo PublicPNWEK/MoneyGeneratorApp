@@ -7,7 +7,7 @@ import { initDatabase, closeDatabase } from './database.js';
 // Register migrations
 import './migrations/index.js';
 
-const PORT = process.env.BACKEND_PORT || 4000;
+const PORT = Number(process.env.PORT || process.env.BACKEND_PORT || 4000);
 
 async function startServer() {
   // Initialize database (optional - app works without it)

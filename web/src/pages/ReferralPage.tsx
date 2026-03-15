@@ -32,8 +32,8 @@ const ReferralPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReferralData();
-    fetchLeaderboard();
+    _fetchReferralData();
+    _fetchLeaderboard();
   }, []);
 
   const normalizeReferralResponse = (data: any): ReferralData => {

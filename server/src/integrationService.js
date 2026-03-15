@@ -31,6 +31,31 @@ function verifySignature(secret, body, signature) {
   return matches;
 }
 
+function verifyTimestampedSignature(secret, body, signature, timestamp) {
+  if (!timestamp) return false;
+  const expected = signPayload(secret, `${timestamp}.${body}`);
+  const normalizedBody = safeNormalize(body);
+  const normalizedExpected = normalizedBody ? signPayload(secret, `${timestamp}.${normalizedBody}`) : expected;
+  const provided = signature || '';
+  return compare(expected, provided) || compare(normalizedExpected, provided);
+}
+
+function resolveWebhookArgs(timestampOrLog, logOrCorrelationId, maybeCorrelationId) {
+  if (typeof timestampOrLog === 'object' && timestampOrLog !== null) {
+    return {
+      timestamp: null,
+      log: timestampOrLog,
+      correlationId: logOrCorrelationId,
+    };
+  }
+
+  return {
+    timestamp: timestampOrLog || null,
+    log: logOrCorrelationId,
+    correlationId: maybeCorrelationId,
+  };
+}
+
 function compare(expected, provided) {
   if (!expected || expected.length !== provided.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
@@ -277,8 +302,11 @@ export const IntegrationService = {
     return sub;
   },
 
-  verifyAndProcessPayPalWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PAYPAL_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPayPalWebhook: (rawBody, signature, timestampOrLog, logOrCorrelationId, maybeCorrelationId) => {
+    const { timestamp, log, correlationId } = resolveWebhookArgs(timestampOrLog, logOrCorrelationId, maybeCorrelationId);
+    const isValid = verifySignature(PAYPAL_WEBHOOK_SECRET, rawBody, signature)
+      || verifyTimestampedSignature(PAYPAL_WEBHOOK_SECRET, rawBody, signature, timestamp);
+    if (!isValid) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);
@@ -312,8 +340,11 @@ export const IntegrationService = {
     return result;
   },
 
-  verifyAndProcessPlaidWebhook: (rawBody, signature, log, correlationId) => {
-    if (!verifySignature(PLAID_WEBHOOK_SECRET, rawBody, signature)) {
+  verifyAndProcessPlaidWebhook: (rawBody, signature, timestampOrLog, logOrCorrelationId, maybeCorrelationId) => {
+    const { timestamp, log, correlationId } = resolveWebhookArgs(timestampOrLog, logOrCorrelationId, maybeCorrelationId);
+    const isValid = verifySignature(PLAID_WEBHOOK_SECRET, rawBody, signature)
+      || verifyTimestampedSignature(PLAID_WEBHOOK_SECRET, rawBody, signature, timestamp);
+    if (!isValid) {
       throw new Error('invalid_signature');
     }
     const payload = JSON.parse(rawBody);
