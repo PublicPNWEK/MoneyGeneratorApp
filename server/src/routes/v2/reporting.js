@@ -5,6 +5,7 @@
 
 import express from 'express';
 import ReportingService from '../../services/reportingService.js';
+import { ScheduledReportService } from '../../services/scheduledReports.js';
 import { logger } from '../../logger.js';
 
 const router = express.Router();
@@ -458,6 +459,157 @@ router.get('/insights', async (req, res) => {
       success: false,
       error: error.message || 'Failed to fetch insights'
     });
+  }
+});
+
+// ==================== SCHEDULED REPORTS ====================
+
+// Get all scheduled reports for a user
+router.get('/scheduled', (req, res) => {
+  try {
+    const userId = req.query.userId || req.headers['x-user-id'] || 'demo-user';
+    const reports = ScheduledReportService.getByUser({ userId });
+    res.json({ success: true, reports });
+  } catch (error) {
+    logger.error('Error in GET /scheduled:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get report type options
+router.get('/scheduled/types', (req, res) => {
+  res.json({ success: true, types: ScheduledReportService.getReportTypes() });
+});
+
+// Get frequency options
+router.get('/scheduled/frequencies', (req, res) => {
+  res.json({ success: true, frequencies: ScheduledReportService.getFrequencyOptions() });
+});
+
+// Create a scheduled report
+router.post('/scheduled', (req, res) => {
+  try {
+    const userId = req.body.userId || req.headers['x-user-id'] || 'demo-user';
+    const { name, reportType, frequency, format, recipients, timezone } = req.body;
+
+    if (!name || !reportType || !frequency) {
+      return res.status(400).json({
+        success: false,
+        error: 'name, reportType, and frequency are required'
+      });
+    }
+
+    const report = ScheduledReportService.create({
+      userId,
+      name,
+      reportType,
+      frequency,
+      format,
+      recipients,
+      timezone,
+    });
+
+    res.status(201).json({ success: true, report });
+  } catch (error) {
+    logger.error('Error in POST /scheduled:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get a specific scheduled report
+router.get('/scheduled/:reportId', (req, res) => {
+  try {
+    const userId = req.query.userId || req.headers['x-user-id'] || 'demo-user';
+    const report = ScheduledReportService.getById({
+      reportId: req.params.reportId,
+      userId,
+    });
+
+    if (!report) {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+
+    res.json({ success: true, report });
+  } catch (error) {
+    logger.error('Error in GET /scheduled/:reportId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update a scheduled report
+router.put('/scheduled/:reportId', (req, res) => {
+  try {
+    const userId = req.body.userId || req.headers['x-user-id'] || 'demo-user';
+    const report = ScheduledReportService.update({
+      reportId: req.params.reportId,
+      userId,
+      updates: req.body,
+    });
+
+    res.json({ success: true, report });
+  } catch (error) {
+    if (error.message === 'report_not_found') {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+    logger.error('Error in PUT /scheduled/:reportId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Toggle active status
+router.post('/scheduled/:reportId/toggle', (req, res) => {
+  try {
+    const userId = req.body.userId || req.headers['x-user-id'] || 'demo-user';
+    const report = ScheduledReportService.toggleActive({
+      reportId: req.params.reportId,
+      userId,
+    });
+
+    res.json({ success: true, report });
+  } catch (error) {
+    if (error.message === 'report_not_found') {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+    logger.error('Error in POST /scheduled/:reportId/toggle:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Run a report immediately
+router.post('/scheduled/:reportId/run', async (req, res) => {
+  try {
+    const userId = req.body.userId || req.headers['x-user-id'] || 'demo-user';
+    const result = await ScheduledReportService.runReport({
+      reportId: req.params.reportId,
+      userId,
+    });
+
+    res.json({ success: true, ...result });
+  } catch (error) {
+    if (error.message === 'report_not_found') {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+    logger.error('Error in POST /scheduled/:reportId/run:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a scheduled report
+router.delete('/scheduled/:reportId', (req, res) => {
+  try {
+    const userId = req.query.userId || req.headers['x-user-id'] || 'demo-user';
+    ScheduledReportService.delete({
+      reportId: req.params.reportId,
+      userId,
+    });
+
+    res.json({ success: true, deleted: true });
+  } catch (error) {
+    if (error.message === 'report_not_found') {
+      return res.status(404).json({ success: false, error: 'Report not found' });
+    }
+    logger.error('Error in DELETE /scheduled/:reportId:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

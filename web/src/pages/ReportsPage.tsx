@@ -11,6 +11,10 @@ import {
   Clock,
   Target,
   Loader2,
+  Save,
+  Trash2,
+  Plus,
+  Check,
 } from 'lucide-react';
 import {
   Line,
@@ -27,10 +31,47 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
+  Legend,
 } from 'recharts';
 import './ReportsPage.css';
 import { apiFetchBlob, apiFetchJson, apiFetchText, getUserId } from '../lib/apiClient';
 import { ErrorState, SkeletonMetricCard, SkeletonChart } from '../components';
+
+// Saved chart configuration interface
+interface SavedChartConfig {
+  id: string;
+  name: string;
+  chartType: string;
+  metrics: { field: string; color: string; label: string }[];
+  stacked: boolean;
+  createdAt: string;
+}
+
+// Scheduled report interface
+interface ScheduledReport {
+  id: string;
+  name: string;
+  reportType: string;
+  frequency: string;
+  format: string;
+  recipients: string[];
+  isActive: boolean;
+  lastRun: string | null;
+  nextRun: string;
+  createdAt: string;
+}
+
+interface ReportTypeOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface FrequencyOption {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface DateRange {
   start: Date;
@@ -324,13 +365,176 @@ const ReportsPage: React.FC = () => {
     { label: 'Pie', value: 'pie' },
   ];
   const chartFields = [
-    { label: 'Earnings', value: 'earnings' },
-    { label: 'Expenses', value: 'expenses' },
-    { label: 'Net Profit', value: 'net' },
+    { label: 'Earnings', value: 'earnings', color: '#3b82f6' },
+    { label: 'Expenses', value: 'expenses', color: '#ef4444' },
+    { label: 'Net Profit', value: 'net', color: '#10b981' },
   ];
 
   const [customChartType, setCustomChartType] = useState('line');
   const [customChartField, setCustomChartField] = useState('earnings');
+  
+  // Enhanced chart builder state
+  const [selectedMetrics, setSelectedMetrics] = useState<{ field: string; color: string; label: string }[]>([
+    { field: 'earnings', color: '#3b82f6', label: 'Earnings' }
+  ]);
+  const [isStacked, setIsStacked] = useState(false);
+  const [savedCharts, setSavedCharts] = useState<SavedChartConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('savedChartConfigs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [chartName, setChartName] = useState('');
+  const [showSaveForm, setShowSaveForm] = useState(false);
+
+  // Toggle a metric in selection
+  const toggleMetric = (field: string) => {
+    const existing = selectedMetrics.find(m => m.field === field);
+    if (existing) {
+      if (selectedMetrics.length > 1) {
+        setSelectedMetrics(selectedMetrics.filter(m => m.field !== field));
+      }
+    } else {
+      const fieldDef = chartFields.find(f => f.value === field);
+      if (fieldDef) {
+        setSelectedMetrics([...selectedMetrics, { field, color: fieldDef.color, label: fieldDef.label }]);
+      }
+    }
+  };
+
+  // Update metric color
+  const updateMetricColor = (field: string, color: string) => {
+    setSelectedMetrics(selectedMetrics.map(m => 
+      m.field === field ? { ...m, color } : m
+    ));
+  };
+
+  // Save current chart configuration
+  const saveChartConfig = () => {
+    if (!chartName.trim()) return;
+    const config: SavedChartConfig = {
+      id: `chart_${Date.now()}`,
+      name: chartName.trim(),
+      chartType: customChartType,
+      metrics: selectedMetrics,
+      stacked: isStacked,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...savedCharts, config];
+    setSavedCharts(updated);
+    localStorage.setItem('savedChartConfigs', JSON.stringify(updated));
+    setChartName('');
+    setShowSaveForm(false);
+  };
+
+  // Load a saved chart configuration
+  const loadChartConfig = (config: SavedChartConfig) => {
+    setCustomChartType(config.chartType);
+    setSelectedMetrics(config.metrics);
+    setIsStacked(config.stacked);
+  };
+
+  // Delete a saved chart configuration
+  const deleteChartConfig = (id: string) => {
+    const updated = savedCharts.filter(c => c.id !== id);
+    setSavedCharts(updated);
+    localStorage.setItem('savedChartConfigs', JSON.stringify(updated));
+  };
+
+  // Color options for metric customization
+  const colorOptions = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+
+  // ==================== SCHEDULED REPORTS ====================
+  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportTypeOption[]>([]);
+  const [frequencies, setFrequencies] = useState<FrequencyOption[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [newScheduledReport, setNewScheduledReport] = useState({
+    name: '',
+    reportType: '',
+    frequency: 'weekly',
+    format: 'pdf',
+    recipients: '',
+  });
+
+  // Fetch scheduled reports
+  useEffect(() => {
+    const fetchScheduledReports = async () => {
+      try {
+        const [reportsRes, typesRes, freqRes] = await Promise.all([
+          apiFetchJson<{ reports: ScheduledReport[] }>('/api/v2/reporting/scheduled'),
+          apiFetchJson<{ types: ReportTypeOption[] }>('/api/v2/reporting/scheduled/types'),
+          apiFetchJson<{ frequencies: FrequencyOption[] }>('/api/v2/reporting/scheduled/frequencies'),
+        ]);
+        setScheduledReports(reportsRes?.reports || []);
+        setReportTypes(typesRes?.types || []);
+        setFrequencies(freqRes?.frequencies || []);
+      } catch (err) {
+        console.error('Failed to fetch scheduled reports:', err);
+      }
+    };
+    fetchScheduledReports();
+  }, []);
+
+  const createScheduledReport = async () => {
+    if (!newScheduledReport.name || !newScheduledReport.reportType) return;
+    try {
+      const res = await apiFetchJson<{ report: ScheduledReport }>('/api/v2/reporting/scheduled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newScheduledReport,
+          recipients: newScheduledReport.recipients.split(',').map(e => e.trim()).filter(Boolean),
+        }),
+      });
+      if (res?.report) {
+        setScheduledReports([res.report, ...scheduledReports]);
+        setShowScheduleForm(false);
+        setNewScheduledReport({ name: '', reportType: '', frequency: 'weekly', format: 'pdf', recipients: '' });
+      }
+    } catch (err) {
+      console.error('Failed to create scheduled report:', err);
+    }
+  };
+
+  const toggleScheduledReport = async (reportId: string) => {
+    try {
+      const res = await apiFetchJson<{ report: ScheduledReport }>(`/api/v2/reporting/scheduled/${reportId}/toggle`, {
+        method: 'POST',
+      });
+      if (res?.report) {
+        setScheduledReports(scheduledReports.map(r => r.id === reportId ? res.report : r));
+      }
+    } catch (err) {
+      console.error('Failed to toggle scheduled report:', err);
+    }
+  };
+
+  const runScheduledReport = async (reportId: string) => {
+    try {
+      await apiFetchJson(`/api/v2/reporting/scheduled/${reportId}/run`, {
+        method: 'POST',
+      });
+      // Refresh the list to get updated lastRun/nextRun
+      const res = await apiFetchJson<{ reports: ScheduledReport[] }>('/api/v2/reporting/scheduled');
+      setScheduledReports(res?.reports || []);
+    } catch (err) {
+      console.error('Failed to run scheduled report:', err);
+    }
+  };
+
+  const deleteScheduledReport = async (reportId: string) => {
+    try {
+      await apiFetchJson(`/api/v2/reporting/scheduled/${reportId}`, {
+        method: 'DELETE',
+      });
+      setScheduledReports(scheduledReports.filter(r => r.id !== reportId));
+    } catch (err) {
+      console.error('Failed to delete scheduled report:', err);
+    }
+  };
 
   return (
     <div className="reports-page">
@@ -600,73 +804,384 @@ const ReportsPage: React.FC = () => {
               </div>
             </div>
           </div>
-          {/* Custom Chart Builder Section */}
+          {/* Custom Chart Builder Section - Enhanced */}
           <div className="custom-chart-section">
-            <h3>Custom Chart Builder</h3>
+            <div className="custom-chart-header">
+              <h3>Custom Chart Builder</h3>
+              <div className="chart-header-actions">
+                {savedCharts.length > 0 && (
+                  <div className="saved-charts-dropdown">
+                    <button className="action-btn" aria-label="Load saved chart">
+                      Load Saved
+                    </button>
+                    <div className="dropdown-menu">
+                      {savedCharts.map(config => (
+                        <div key={config.id} className="saved-chart-item">
+                          <button onClick={() => loadChartConfig(config)} aria-label={`Load ${config.name}`}>
+                            {config.name}
+                          </button>
+                          <button 
+                            className="delete-btn"
+                            onClick={(e) => { e.stopPropagation(); deleteChartConfig(config.id); }}
+                            aria-label={`Delete ${config.name}`}
+                            title="Delete chart"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {showSaveForm ? (
+                  <div className="save-chart-form">
+                    <input
+                      type="text"
+                      placeholder="Chart name..."
+                      value={chartName}
+                      onChange={(e) => setChartName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && saveChartConfig()}
+                    />
+                    <button className="action-btn primary" onClick={saveChartConfig}>
+                      <Check size={14} />
+                    </button>
+                    <button className="action-btn" onClick={() => setShowSaveForm(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button className="action-btn" onClick={() => setShowSaveForm(true)}>
+                    <Save size={14} />
+                    Save Chart
+                  </button>
+                )}
+              </div>
+            </div>
+            
             <div className="custom-chart-controls">
-              <label>
-                Chart Type:
-                <select value={customChartType} onChange={e => setCustomChartType(e.target.value)}>
+              <div className="control-group">
+                <label htmlFor="chart-type-select">Chart Type:</label>
+                <select 
+                  id="chart-type-select"
+                  value={customChartType} 
+                  onChange={e => setCustomChartType(e.target.value)}
+                  aria-label="Select chart type"
+                >
                   {chartTypes.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-              </label>
-              <label>
-                Data Field:
-                <select value={customChartField} onChange={e => setCustomChartField(e.target.value)}>
-                  {chartFields.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              </label>
+              </div>
+              
+              <div className="control-group">
+                <label>Metrics:</label>
+                <div className="metric-toggles" role="group" aria-label="Select metrics to display">
+                  {chartFields.map(field => {
+                    const isSelected = selectedMetrics.some(m => m.field === field.value);
+                    const metric = selectedMetrics.find(m => m.field === field.value);
+                    return (
+                      <div key={field.value} className={`metric-toggle ${isSelected ? 'active' : ''}`}>
+                        <button 
+                          onClick={() => toggleMetric(field.value)}
+                          aria-label={`Toggle ${field.label} metric`}
+                          aria-pressed={isSelected}
+                        >
+                          <span className="color-dot" style={{ background: metric?.color || field.color }} />
+                          {field.label}
+                        </button>
+                        {isSelected && (
+                          <div className="color-picker-mini" role="group" aria-label={`Color options for ${field.label}`}>
+                            {colorOptions.map(color => (
+                              <button
+                                key={color}
+                                className={`color-option ${metric?.color === color ? 'selected' : ''}`}
+                                style={{ background: color }}
+                                onClick={() => updateMetricColor(field.value, color)}
+                                aria-label={`Set ${field.label} color to ${color}`}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {(customChartType === 'bar' || customChartType === 'area') && selectedMetrics.length > 1 && (
+                <div className="control-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isStacked}
+                      onChange={(e) => setIsStacked(e.target.checked)}
+                    />
+                    Stacked
+                  </label>
+                </div>
+              )}
             </div>
+            
             <div className="custom-chart-preview">
               {customChartType === 'line' && (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={earningsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                     <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
                     <Tooltip content={renderCustomTooltip} />
-                    <Line type="monotone" dataKey={customChartField} stroke="#3b82f6" strokeWidth={2} />
+                    <Legend />
+                    {selectedMetrics.map(metric => (
+                      <Line 
+                        key={metric.field}
+                        type="monotone" 
+                        dataKey={metric.field} 
+                        name={metric.label}
+                        stroke={metric.color} 
+                        strokeWidth={2}
+                        dot={{ fill: metric.color, strokeWidth: 2 }}
+                      />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               )}
               {customChartType === 'bar' && (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={earningsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                     <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
                     <Tooltip content={renderCustomTooltip} />
-                    <Bar dataKey={customChartField} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Legend />
+                    {selectedMetrics.map(metric => (
+                      <Bar 
+                        key={metric.field}
+                        dataKey={metric.field}
+                        name={metric.label}
+                        fill={metric.color}
+                        radius={isStacked ? undefined : [4, 4, 0, 0]}
+                        stackId={isStacked ? 'stack' : undefined}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               )}
               {customChartType === 'area' && (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={earningsData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
                     <YAxis stroke="#64748b" fontSize={12} tickFormatter={v => `$${v}`} />
                     <Tooltip content={renderCustomTooltip} />
-                    <Area type="monotone" dataKey={customChartField} stroke="#3b82f6" fillOpacity={0.3} fill="#3b82f6" strokeWidth={2} />
+                    <Legend />
+                    {selectedMetrics.map(metric => (
+                      <Area 
+                        key={metric.field}
+                        type="monotone" 
+                        dataKey={metric.field}
+                        name={metric.label}
+                        stroke={metric.color}
+                        fillOpacity={0.3}
+                        fill={metric.color}
+                        strokeWidth={2}
+                        stackId={isStacked ? 'stack' : undefined}
+                      />
+                    ))}
                   </AreaChart>
                 </ResponsiveContainer>
               )}
               {customChartType === 'pie' && (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <RechartsPieChart>
                     <Pie
-                      data={earningsData}
-                      dataKey={customChartField}
-                      nameKey="date"
+                      data={selectedMetrics.length === 1 
+                        ? earningsData.map(d => ({ name: d.date, value: d[selectedMetrics[0].field as keyof typeof d] }))
+                        : selectedMetrics.map(m => ({ 
+                            name: m.label, 
+                            value: earningsData.reduce((sum, d) => sum + (Number(d[m.field as keyof typeof d]) || 0), 0),
+                            color: m.color
+                          }))
+                      }
+                      dataKey="value"
+                      nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={90}
-                      fill="#3b82f6"
-                      label
-                    />
-                    <Tooltip content={renderCustomTooltip} />
+                      outerRadius={100}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {selectedMetrics.length === 1 
+                        ? earningsData.map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))
+                        : selectedMetrics.map((m, index) => (
+                            <Cell key={index} fill={m.color} />
+                          ))
+                      }
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
                   </RechartsPieChart>
                 </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Scheduled Reports Section */}
+          <div className="scheduled-reports-section">
+            <div className="scheduled-reports-header">
+              <h3>Scheduled Reports</h3>
+              <button 
+                className="action-btn primary"
+                onClick={() => setShowScheduleForm(!showScheduleForm)}
+              >
+                <Plus size={16} />
+                {showScheduleForm ? 'Cancel' : 'New Schedule'}
+              </button>
+            </div>
+
+            {showScheduleForm && (
+              <div className="schedule-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="schedule-name">Report Name</label>
+                    <input
+                      id="schedule-name"
+                      type="text"
+                      placeholder="Weekly Earnings Summary"
+                      value={newScheduledReport.name}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="schedule-type">Report Type</label>
+                    <select
+                      id="schedule-type"
+                      value={newScheduledReport.reportType}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, reportType: e.target.value })}
+                    >
+                      <option value="">Select type...</option>
+                      {reportTypes.map(type => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="schedule-frequency">Frequency</label>
+                    <select
+                      id="schedule-frequency"
+                      value={newScheduledReport.frequency}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, frequency: e.target.value })}
+                    >
+                      {frequencies.map(freq => (
+                        <option key={freq.id} value={freq.id}>{freq.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="schedule-format">Format</label>
+                    <select
+                      id="schedule-format"
+                      value={newScheduledReport.format}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, format: e.target.value })}
+                    >
+                      <option value="pdf">PDF</option>
+                      <option value="csv">CSV</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label htmlFor="schedule-recipients">Recipients (comma-separated emails)</label>
+                    <input
+                      id="schedule-recipients"
+                      type="text"
+                      placeholder="email@example.com, another@example.com"
+                      value={newScheduledReport.recipients}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, recipients: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button 
+                    className="action-btn primary"
+                    onClick={createScheduledReport}
+                    disabled={!newScheduledReport.name || !newScheduledReport.reportType}
+                  >
+                    Create Schedule
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="scheduled-reports-list">
+              {scheduledReports.length === 0 ? (
+                <div className="empty-state">
+                  <Calendar size={48} />
+                  <p>No scheduled reports yet. Create one to get automated reports delivered to your inbox.</p>
+                </div>
+              ) : (
+                scheduledReports.map(report => (
+                  <div key={report.id} className={`scheduled-report-card ${report.isActive ? 'active' : 'inactive'}`}>
+                    <div className="report-info">
+                      <div className="report-header">
+                        <h4>{report.name}</h4>
+                        <span className={`status-badge ${report.isActive ? 'active' : 'paused'}`}>
+                          {report.isActive ? 'Active' : 'Paused'}
+                        </span>
+                      </div>
+                      <p className="report-type">
+                        {reportTypes.find(t => t.id === report.reportType)?.name || report.reportType}
+                      </p>
+                      <div className="report-meta">
+                        <span>
+                          <Clock size={14} />
+                          {frequencies.find(f => f.id === report.frequency)?.name || report.frequency}
+                        </span>
+                        <span>
+                          <Download size={14} />
+                          {report.format.toUpperCase()}
+                        </span>
+                        {report.lastRun && (
+                          <span>
+                            Last: {new Date(report.lastRun).toLocaleDateString()}
+                          </span>
+                        )}
+                        {report.nextRun && report.isActive && (
+                          <span>
+                            Next: {new Date(report.nextRun).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="report-actions">
+                      <button 
+                        className="icon-btn"
+                        onClick={() => runScheduledReport(report.id)}
+                        title="Run now"
+                        aria-label="Run report now"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                      <button 
+                        className="icon-btn"
+                        onClick={() => toggleScheduledReport(report.id)}
+                        title={report.isActive ? 'Pause' : 'Resume'}
+                        aria-label={report.isActive ? 'Pause report' : 'Resume report'}
+                      >
+                        {report.isActive ? '⏸' : '▶'}
+                      </button>
+                      <button 
+                        className="icon-btn danger"
+                        onClick={() => deleteScheduledReport(report.id)}
+                        title="Delete"
+                        aria-label="Delete report"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
