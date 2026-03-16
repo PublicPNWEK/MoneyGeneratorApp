@@ -630,6 +630,85 @@
   height: 320px;
 }
 
+.builder-svg-chart-shell {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.builder-svg-chart {
+  width: 100%;
+  min-height: 300px;
+}
+
+.builder-svg-chart--pie {
+  min-height: 320px;
+}
+
+.builder-svg-grid-line {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+
+.builder-svg-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.builder-svg-axis-labels--dense {
+  flex-wrap: wrap;
+}
+
+.builder-svg-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.builder-svg-pie-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.builder-svg-pie-total-label {
+  fill: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.builder-svg-pie-total-value {
+  fill: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.builder-svg-pie-legend {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.builder-svg-pie-legend-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.builder-svg-pie-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.builder-svg-pie-legend-name {
+  color: var(--text-secondary);
+}
+
 .pie-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1033,6 +1112,10 @@
 
   .advanced-charts-header {
     align-items: flex-start;
+  }
+
+  .builder-svg-pie-legend-item {
+    grid-template-columns: auto 1fr;
   }
 }
 

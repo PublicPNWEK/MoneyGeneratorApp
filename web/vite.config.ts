@@ -18,6 +18,11 @@ type BundleRule = {
 
 const kilobytes = (value: number) => value * 1024
 
+const reportsChartChunkPrefixes = ['ReportsChart', 'generateCategoricalChart-', 'YAxis-']
+
+const isReportsChartChunk = (fileName: string) =>
+  fileName.endsWith('.js') && reportsChartChunkPrefixes.some((prefix) => fileName.includes(prefix))
+
 const bundleRules: BundleRule[] = [
   {
     name: 'entry-js',
@@ -33,8 +38,7 @@ const bundleRules: BundleRule[] = [
       fileName.endsWith('.js') &&
       !fileName.includes('vendor-react') &&
       !fileName.includes('vendor-icons') &&
-      !fileName.includes('ReportsCharts-') &&
-      !fileName.includes('ReportsChartBuilder-') &&
+      !isReportsChartChunk(fileName) &&
       !fileName.includes('JobMap-') &&
       !fileName.includes('maplibre-gl-'),
   },
@@ -51,8 +55,7 @@ const bundleRules: BundleRule[] = [
   {
     name: 'reports-charts-js',
     maxSize: kilobytes(450),
-    matches: (fileName) =>
-      (fileName.includes('ReportsCharts-') || fileName.includes('ReportsChartBuilder-')) && fileName.endsWith('.js'),
+    matches: (fileName) => isReportsChartChunk(fileName),
   },
   {
     name: 'job-map-js',
@@ -61,8 +64,14 @@ const bundleRules: BundleRule[] = [
   },
   {
     name: 'maplibre-js',
-    maxSize: kilobytes(850),
+    maxSize: kilobytes(760),
     matches: (fileName) => fileName.includes('maplibre-gl-') && fileName.endsWith('.js'),
+  },
+  {
+    name: 'maplibre-worker-asset',
+    maxSize: kilobytes(380),
+    matches: (fileName, item) =>
+      item.type === 'asset' && fileName.includes('maplibre-gl-csp-worker-') && fileName.endsWith('.js'),
   },
   {
     name: 'entry-css',

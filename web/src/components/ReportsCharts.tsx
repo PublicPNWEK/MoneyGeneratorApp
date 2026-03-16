@@ -278,7 +278,7 @@ export default function ReportsCharts({ earningsData, platformData }: ReportsCha
           </Suspense>
         ) : (
           <div className="advanced-charts-placeholder">
-            <p>The default analytics above stay lightweight. The Recharts-powered builder loads only after you explicitly open it.</p>
+            <p>The default analytics above stay lightweight. The advanced SVG chart builder loads only after you explicitly open it.</p>
           </div>
         )}
       </div>

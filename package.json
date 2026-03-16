@@ -19,7 +19,6 @@
     "deploy:staging": "scripts/deploy.sh staging",
     "prepare": "node -e \"process.env.CI ? process.exit(0) : require(\"child_process\").execSync(\"husky\")\""
   },
-  "dependencies": {},
   "devDependencies": {
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",

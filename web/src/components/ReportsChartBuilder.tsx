@@ -1,35 +1,12 @@
-import { useState } from 'react';
-import {
-  Line,
-  LineChart,
-  BarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-  AreaChart,
-  Legend,
-} from 'recharts';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { Check, Save, Trash2 } from 'lucide-react';
-
-interface ReportsChartEarningsPoint {
-  date: string;
-  earnings: number;
-  expenses: number;
-  net: number;
-}
+import type { ReportsChartEarningsPoint, SelectedMetric } from './ReportsChartPreviewTypes';
 
 interface SavedChartConfig {
   id: string;
   name: string;
   chartType: string;
-  metrics: { field: string; color: string; label: string }[];
+  metrics: SelectedMetric[];
   stacked: boolean;
   createdAt: string;
 }
@@ -49,7 +26,10 @@ const colorClassNames: Record<string, string> = {
   '#84cc16': 'color-swatch-lime',
 };
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const ReportsChartLinePreview = lazy(() => import('./ReportsChartLinePreview'));
+const ReportsChartBarPreview = lazy(() => import('./ReportsChartBarPreview'));
+const ReportsChartAreaPreview = lazy(() => import('./ReportsChartAreaPreview'));
+const ReportsChartPiePreview = lazy(() => import('./ReportsChartPiePreview'));
 
 const chartTypes = [
   { label: 'Line', value: 'line' },
@@ -68,7 +48,7 @@ const colorOptions = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#0
 
 export default function ReportsChartBuilder({ earningsData }: ReportsChartBuilderProps) {
   const [customChartType, setCustomChartType] = useState('line');
-  const [selectedMetrics, setSelectedMetrics] = useState<{ field: string; color: string; label: string }[]>([
+  const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetric[]>([
     { field: 'earnings', color: '#3b82f6', label: 'Earnings' },
   ]);
   const [isStacked, setIsStacked] = useState(false);
@@ -82,22 +62,6 @@ export default function ReportsChartBuilder({ earningsData }: ReportsChartBuilde
   });
   const [chartName, setChartName] = useState('');
   const [showSaveForm, setShowSaveForm] = useState(false);
-
-  const renderCustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip">
-          <p className="tooltip-label">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className={`tooltip-entry tooltip-entry-${entry.name?.toLowerCase()}`}>
-              {entry.name}: ${entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   const toggleMetric = (field: string) => {
     const existing = selectedMetrics.find((metric) => metric.field === field);
@@ -148,6 +112,22 @@ export default function ReportsChartBuilder({ earningsData }: ReportsChartBuilde
     setSavedCharts(updated);
     localStorage.setItem('savedChartConfigs', JSON.stringify(updated));
   };
+
+  const preview = useMemo(() => {
+    if (customChartType === 'bar') {
+      return <ReportsChartBarPreview earningsData={earningsData} selectedMetrics={selectedMetrics} isStacked={isStacked} />;
+    }
+
+    if (customChartType === 'area') {
+      return <ReportsChartAreaPreview earningsData={earningsData} selectedMetrics={selectedMetrics} isStacked={isStacked} />;
+    }
+
+    if (customChartType === 'pie') {
+      return <ReportsChartPiePreview earningsData={earningsData} selectedMetrics={selectedMetrics} />;
+    }
+
+    return <ReportsChartLinePreview earningsData={earningsData} selectedMetrics={selectedMetrics} />;
+  }, [customChartType, earningsData, isStacked, selectedMetrics]);
 
   return (
     <div className="custom-chart-section">
@@ -259,79 +239,15 @@ export default function ReportsChartBuilder({ earningsData }: ReportsChartBuilde
       </div>
 
       <div className="custom-chart-preview">
-        {customChartType === 'line' && (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={earningsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(value) => `$${value}`} />
-              <Tooltip content={renderCustomTooltip} />
-              <Legend />
-              {selectedMetrics.map((metric) => (
-                <Line key={metric.field} type="monotone" dataKey={metric.field} name={metric.label} stroke={metric.color} strokeWidth={2} dot={{ fill: metric.color, strokeWidth: 2 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        {customChartType === 'bar' && (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={earningsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(value) => `$${value}`} />
-              <Tooltip content={renderCustomTooltip} />
-              <Legend />
-              {selectedMetrics.map((metric) => (
-                <Bar key={metric.field} dataKey={metric.field} name={metric.label} fill={metric.color} radius={isStacked ? undefined : [4, 4, 0, 0]} stackId={isStacked ? 'stack' : undefined} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-        {customChartType === 'area' && (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={earningsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(value) => `$${value}`} />
-              <Tooltip content={renderCustomTooltip} />
-              <Legend />
-              {selectedMetrics.map((metric) => (
-                <Area key={metric.field} type="monotone" dataKey={metric.field} name={metric.label} stroke={metric.color} fillOpacity={0.3} fill={metric.color} strokeWidth={2} stackId={isStacked ? 'stack' : undefined} />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-        {customChartType === 'pie' && (
-          <ResponsiveContainer width="100%" height={300}>
-            <RechartsPieChart>
-              <Pie
-                data={selectedMetrics.length === 1
-                  ? earningsData.map((point) => ({ name: point.date, value: point[selectedMetrics[0].field as keyof typeof point] }))
-                  : selectedMetrics.map((metric) => ({
-                      name: metric.label,
-                      value: earningsData.reduce((sum, point) => sum + (Number(point[metric.field as keyof typeof point]) || 0), 0),
-                      color: metric.color,
-                    }))}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              >
-                {selectedMetrics.length === 1
-                  ? earningsData.map((_, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))
-                  : selectedMetrics.map((metric, index) => (
-                      <Cell key={index} fill={metric.color} />
-                    ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </RechartsPieChart>
-          </ResponsiveContainer>
-        )}
+        <Suspense
+          fallback={
+            <div className="reports-builder-skeleton">
+              <div className="reports-builder-skeleton__surface" />
+            </div>
+          }
+        >
+          {preview}
+        </Suspense>
       </div>
     </div>
   );
