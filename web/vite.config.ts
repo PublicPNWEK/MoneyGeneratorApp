@@ -1,7 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
-// import { VitePWA } from 'vite-plugin-pwa'
 
 type BundleItem = {
   fileName: string
@@ -213,32 +212,6 @@ export default defineConfig(({ mode }) => {
             }),
           ]
         : []),
-      /* 
-      // PWA Temporarily Disabled for Netlify Deployment Stability
-      // The previous configuration was causing EISDIR errors during the build process
-      VitePWA({
-        registerType: 'autoUpdate',
-        injectRegister: null, 
-        manifest: {
-          name: 'Money Generator App',
-          short_name: 'MoneyGen',
-          description: 'Earn money from multiple income sources',
-          theme_color: '#10b981',
-          background_color: '#1a1a1a',
-          scope: '/',
-          start_url: '/',
-          display: 'standalone',
-        },
-        workbox: {
-          globPatterns: ['**\/*.{js,css,html,woff2,png,svg,ico}'],
-          maximumFileSizeToCacheInBytes: 5000000,
-          cleanupOutdatedCaches: true,
-        },
-        devOptions: {
-          enabled: false,
-        },
-      }),
-      */
     ],
 
     server: {
