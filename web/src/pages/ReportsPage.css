@@ -147,7 +147,8 @@
   position: relative;
 }
 
-.export-dropdown .dropdown-menu {
+.export-dropdown .dropdown-menu,
+.saved-charts-dropdown .dropdown-menu {
   position: absolute;
   top: 100%;
   right: 0;
@@ -156,9 +157,14 @@
   border-radius: 8px;
   padding: 0.5rem;
   margin-top: 0.25rem;
-  display: none;
   z-index: 10;
   min-width: 150px;
+  box-shadow: var(--shadow-lg);
+  animation: slideInUp var(--duration-fast) var(--easing-ease-out);
+}
+
+.export-dropdown .dropdown-menu {
+  display: none;
 }
 
 .export-dropdown:hover .dropdown-menu {
