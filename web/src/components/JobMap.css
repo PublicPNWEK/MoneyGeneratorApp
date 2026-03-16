@@ -181,6 +181,48 @@
   border: 1px solid var(--border-color);
 }
 
+.job-map-container--pending {
+  background:
+    radial-gradient(circle at top, rgb(16 185 129 / 0.12), transparent 45%),
+    linear-gradient(180deg, rgb(15 23 42 / 0.05), transparent 60%);
+}
+
+.job-map-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background: linear-gradient(180deg, rgb(248 250 252 / 0.92), rgb(241 245 249 / 0.82));
+  z-index: 1;
+}
+
+body.dark .job-map-placeholder {
+  background: linear-gradient(180deg, rgb(15 23 42 / 0.92), rgb(30 41 59 / 0.82));
+}
+
+.job-map-placeholder__spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 3px solid rgb(148 163 184 / 0.25);
+  border-top-color: var(--color-emerald-500);
+  animation: job-map-spin 0.9s linear infinite;
+}
+
+@keyframes job-map-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .maplibregl-popup-content {
   position: relative;
   pointer-events: auto;

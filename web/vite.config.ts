@@ -18,7 +18,7 @@ type BundleRule = {
 
 const kilobytes = (value: number) => value * 1024
 
-const reportsChartChunkPrefixes = ['ReportsChart', 'generateCategoricalChart-', 'YAxis-']
+const reportsChartChunkPrefixes = ['ReportsChart']
 
 const isReportsChartChunk = (fileName: string) =>
   fileName.endsWith('.js') && reportsChartChunkPrefixes.some((prefix) => fileName.includes(prefix))
@@ -54,28 +54,28 @@ const bundleRules: BundleRule[] = [
   },
   {
     name: 'reports-charts-js',
-    maxSize: kilobytes(450),
+    maxSize: kilobytes(64),
     matches: (fileName) => isReportsChartChunk(fileName),
   },
   {
     name: 'job-map-js',
-    maxSize: kilobytes(850),
+    maxSize: kilobytes(16),
     matches: (fileName) => fileName.includes('JobMap-') && fileName.endsWith('.js'),
   },
   {
     name: 'maplibre-js',
-    maxSize: kilobytes(760),
+    maxSize: kilobytes(740),
     matches: (fileName) => fileName.includes('maplibre-gl-') && fileName.endsWith('.js'),
   },
   {
     name: 'maplibre-worker-asset',
-    maxSize: kilobytes(380),
+    maxSize: kilobytes(360),
     matches: (fileName, item) =>
       item.type === 'asset' && fileName.includes('maplibre-gl-csp-worker-') && fileName.endsWith('.js'),
   },
   {
     name: 'entry-css',
-    maxSize: kilobytes(80),
+    maxSize: kilobytes(72),
     matches: (fileName, item) => item.type === 'asset' && /^assets\/index-.*\.css$/.test(fileName),
   },
   {
@@ -90,12 +90,12 @@ const bundleRules: BundleRule[] = [
   },
   {
     name: 'job-map-css',
-    maxSize: kilobytes(70),
+    maxSize: kilobytes(8),
     matches: (fileName, item) => item.type === 'asset' && fileName.includes('JobMap-') && fileName.endsWith('.css'),
   },
   {
     name: 'shared-css',
-    maxSize: kilobytes(24),
+    maxSize: kilobytes(23),
     matches: (fileName, item) => item.type === 'asset' && fileName.includes('Skeleton-') && fileName.endsWith('.css'),
   },
 ]
@@ -171,7 +171,7 @@ function createBundleBudgetPlugin(strict: boolean): Plugin {
       })
 
       if (violations.length === 0) {
-        this.warn(
+        this.info(
           `[bundle-budget] All bundle budgets passed. Largest file: ${largestItems[0]?.fileName || 'n/a'} (${formatKilobytes(largestItems[0]?.size || 0)}).`,
         )
         return

@@ -7,7 +7,6 @@ import { AppLayout } from './layouts/AppLayout';
 import { ThemeProvider } from './context/ThemeContext';
 import { OnboardingProvider } from './utils/onboardingSystem';
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute';
-import './index.css';
 import './App.css';
 
 const OnboardingWizard = lazy(async () => ({

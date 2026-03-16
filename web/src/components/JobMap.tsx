@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Job } from '../data/mockJobs';
 import './JobMap.css';
 
@@ -38,9 +38,42 @@ function buildGeoJson(jobs: Job[]): GeoJSON.FeatureCollection {
 export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [shouldInitializeMap, setShouldInitializeMap] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
-    if (mapRef.current || !containerRef.current) return;
+    const container = containerRef.current;
+    if (!container || shouldInitializeMap) {
+      return;
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setShouldInitializeMap(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShouldInitializeMap(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '200px 0px',
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [shouldInitializeMap]);
+
+  useEffect(() => {
+    if (!shouldInitializeMap || mapRef.current || !containerRef.current) return;
 
     let disposed = false;
     let activeMap: MapLibreMap | null = null;
@@ -69,6 +102,8 @@ export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
       map.on('load', () => {
+        setIsMapReady(true);
+
         // Add data source
         map.addSource('jobs', {
           type: 'geojson',
@@ -196,8 +231,9 @@ export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
       disposed = true;
       activeMap?.remove();
       mapRef.current = null;
+      setIsMapReady(false);
     };
-  }, []); // Initialize strictly once
+  }, [center, jobs, shouldInitializeMap]);
 
   // Reactive updates for jobs data
   useEffect(() => {
@@ -232,5 +268,14 @@ export function JobMap({ jobs, center = [-122.4194, 37.7749] }: JobMapProps) {
     });
   }, [center]);
 
-  return <div ref={containerRef} className="job-map-container" />;
+  return (
+    <div ref={containerRef} className={`job-map-container${isMapReady ? '' : ' job-map-container--pending'}`}>
+      {!isMapReady && (
+        <div className="job-map-placeholder" role="status" aria-live="polite">
+          <div className="job-map-placeholder__spinner" aria-hidden="true" />
+          <p>{shouldInitializeMap ? 'Loading interactive map...' : 'Map loads when this section enters view.'}</p>
+        </div>
+      )}
+    </div>
+  );
 }
