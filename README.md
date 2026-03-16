@@ -241,28 +241,3 @@ npm install --prefix server
 - Reduced always-on CSS and removed stale frontend structure.
 
 See `CHANGELOG.md` for full release history.
-
-```bash
-netstat -ano | findstr :3000
-netstat -ano | findstr :4000
-```
-
-### Clean reinstall
-
-```bash
-rm -rf node_modules web/node_modules server/node_modules
-npm install
-npm install --prefix web
-npm install --prefix server
-```
-
-## Version Notes
-
-### v1.3.1
-
-- Removed Recharts in favor of custom SVG previews.
-- Removed the unused vite-plugin-pwa dependency chain.
-- Tightened bundle-budget enforcement.
-- Reduced always-on CSS and removed stale frontend structure.
-
-See CHANGELOG.md for full release history.
