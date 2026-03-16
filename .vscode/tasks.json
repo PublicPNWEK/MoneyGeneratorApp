@@ -24,6 +24,32 @@
 			],
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "release budget build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build:budget"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "server dependency audit",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"audit",
+				"--json",
+				"--prefix",
+				"server"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

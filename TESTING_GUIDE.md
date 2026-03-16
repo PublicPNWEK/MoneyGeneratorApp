@@ -44,48 +44,22 @@ curl -X POST http://localhost:4000/webhooks/plaid \
 ```
 
 Both endpoints are idempotent: re-sending the same payload returns `{ "status": "duplicate" }`.
-## How to test locally
 
-This project has two Jest suites: the React Native app and the Node backend. No real PayPal or Plaid credentials are required—webhooks are signed using demo secrets and provider calls are mocked.
+## Production smoke script
 
-### Commands
+The repository includes a lightweight smoke script at `scripts/smoke-check.mjs`.
 
-- Run app tests: `npm test`
-- Run backend tests: `npm run test:server`
-- Run everything (CI-equivalent): `npm run test:ci`
+It verifies:
 
-### Sample webhook payloads
+- `GET /health`
+- `GET /catalog`
+- `POST /api/v2/assets/upload-url`
+- `GET /api/v2/ops/overview` when `SMOKE_OPERATOR_TOKEN` is provided
 
-Secrets default to `demo-paypal-secret` and `demo-plaid-secret`. Use the HMAC helper below to generate a matching signature for manual testing.
-
-```bash
-# Generate signatures for sample payloads
-node - <<'NODE'
-const crypto = require('crypto');
-const sign = (secret, body) => crypto.createHmac('sha256', secret).update(body).digest('hex');
-
-const paypalBody = JSON.stringify({ id: 'evt_demo_paypal', event_type: 'PAYMENT.SALE.COMPLETED' });
-const plaidBody = JSON.stringify({ webhook_code: 'SYNC_UPDATES_AVAILABLE', item_id: 'item_demo_1' });
-
-console.log('PayPal signature:', sign('demo-paypal-secret', paypalBody));
-console.log('Plaid signature:', sign('demo-plaid-secret', plaidBody));
-console.log('PayPal body:', paypalBody);
-console.log('Plaid body:', plaidBody);
-NODE
-```
-
-Send the payloads to the local server (default port `4000` if running `node server/src/index.js`):
+Example:
 
 ```bash
-curl -X POST http://localhost:4000/webhooks/paypal \
-  -H "Content-Type: application/json" \
-  -H "x-paypal-signature: <paypal-signature-from-script>" \
-  -d '<paypal-body-from-script>'
-
-curl -X POST http://localhost:4000/webhooks/plaid \
-  -H "Content-Type: application/json" \
-  -H "x-plaid-signature: <plaid-signature-from-script>" \
-  -d '<plaid-body-from-script>'
+SMOKE_BASE_URL=https://your-backend.example \
+SMOKE_OPERATOR_TOKEN=your-operator-token \
+npm run smoke:prod
 ```
-
-Both endpoints are idempotent: re-sending the same payload will return `{ "status": "duplicate" }`.
