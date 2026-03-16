@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, type ComponentType } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -9,47 +9,35 @@ import { OnboardingProvider } from './utils/onboardingContext';
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute';
 import './App.css';
 
-const OnboardingWizard = lazy(async () => ({
-  default: (await import('./components/OnboardingWizard')).OnboardingWizard,
-}));
-const Checkout = lazy(async () => ({
-  default: (await import('./components/Checkout')).Checkout,
-}));
-const DashboardPageV2 = lazy(async () => ({
-  default: (await import('./pages/DashboardPageV2')).DashboardPageV2,
-}));
-const ProductsPage = lazy(async () => ({
-  default: (await import('./pages/ProductsPage')).ProductsPage,
-}));
-const JobsPage = lazy(async () => ({
-  default: (await import('./pages/JobsPage')).JobsPage,
-}));
-const TeamPage = lazy(async () => ({
-  default: (await import('./pages/TeamPage')).TeamPage,
-}));
-const SettingsPage = lazy(async () => ({
-  default: (await import('./pages/SettingsPage')).SettingsPage,
-}));
-const MileagePage = lazy(async () => ({
-  default: (await import('./pages/MileagePage')).MileagePage,
-}));
-const TaxPage = lazy(async () => ({
-  default: (await import('./pages/TaxPage')).TaxPage,
-}));
-const ReferralPage = lazy(() => import('./pages/ReferralPage'));
-const PricingPage = lazy(() => import('./pages/PricingPage'));
-const ReportsPage = lazy(() => import('./pages/ReportsPage'));
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const ConnectDashboard = lazy(() => import('./pages/ConnectDashboard'));
-const OpsPage = lazy(() => import('./pages/OpsPage'));
-const Storefront = lazy(async () => ({
-  default: (await import('./pages/Storefront')).Storefront,
-}));
-const StorefrontSuccess = lazy(async () => ({
-  default: (await import('./pages/Storefront')).StorefrontSuccess,
-}));
+function lazyNamed(importer: () => Promise<Record<string, ComponentType<any>>>, exportName: string) {
+  return lazy(async () => ({
+    default: (await importer())[exportName] as ComponentType<any>,
+  }));
+}
+
+function lazyDefault(importer: () => Promise<{ default: ComponentType<any> }>) {
+  return lazy(importer);
+}
+
+const OnboardingWizard = lazyNamed(() => import('./components/OnboardingWizard'), 'OnboardingWizard');
+const Checkout = lazyNamed(() => import('./components/Checkout'), 'Checkout');
+const DashboardPageV2 = lazyNamed(() => import('./pages/DashboardPageV2'), 'DashboardPageV2');
+const ProductsPage = lazyNamed(() => import('./pages/ProductsPage'), 'ProductsPage');
+const JobsPage = lazyNamed(() => import('./pages/JobsPage'), 'JobsPage');
+const TeamPage = lazyNamed(() => import('./pages/TeamPage'), 'TeamPage');
+const SettingsPage = lazyNamed(() => import('./pages/SettingsPage'), 'SettingsPage');
+const MileagePage = lazyNamed(() => import('./pages/MileagePage'), 'MileagePage');
+const TaxPage = lazyNamed(() => import('./pages/TaxPage'), 'TaxPage');
+const Storefront = lazyNamed(() => import('./pages/Storefront'), 'Storefront');
+const StorefrontSuccess = lazyNamed(() => import('./pages/Storefront'), 'StorefrontSuccess');
+const ReferralPage = lazyDefault(() => import('./pages/ReferralPage'));
+const PricingPage = lazyDefault(() => import('./pages/PricingPage'));
+const ReportsPage = lazyDefault(() => import('./pages/ReportsPage'));
+const NotificationsPage = lazyDefault(() => import('./pages/NotificationsPage'));
+const LoginPage = lazyDefault(() => import('./pages/LoginPage'));
+const RegisterPage = lazyDefault(() => import('./pages/RegisterPage'));
+const ConnectDashboard = lazyDefault(() => import('./pages/ConnectDashboard'));
+const OpsPage = lazyDefault(() => import('./pages/OpsPage'));
 
 function RouteLoadingShell({ message = 'Loading page...' }: { message?: string }) {
   return (

@@ -15,7 +15,7 @@ interface ProtectedRouteProps {
  * Usage:
  * <Route path="/dashboard" element={
  *   <ProtectedRoute>
- *     <DashboardPage />
+*     <DashboardPageV2 />
  *   </ProtectedRoute>
  * } />
  */

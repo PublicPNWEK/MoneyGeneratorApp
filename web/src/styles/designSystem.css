@@ -28,15 +28,12 @@
   --color-charcoal-400: #9ca3af;
   --color-charcoal-500: #6b7280;  /* SECONDARY TEXT */
   --color-charcoal-600: #4b5563;  /* BODY TEXT */
-  --color-charcoal-700: #374151;
-  --color-charcoal-800: #1f2937;  /* DARK TEXT */
   --color-charcoal-900: #111827;  /* DARKEST */
 
   /* Gold Accents - Premium feel, highlights */
   --color-gold-100: #fef3c7;
   --color-gold-400: #fbbf24;  /* ACCENT */
   --color-gold-500: #f59e0b;  /* ACCENT (darker) */
-  --color-gold-600: #d97706;
   --color-gold-700: #b45309;
 
   /* Accent Colors */
@@ -133,13 +130,11 @@
 
   /* Line Heights */
   --leading-tight: 1.25;
-  --leading-snug: 1.375;
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
 
   /* Letter Spacing */
   --tracking-tight: -0.01em;
-  --tracking-normal: 0;
   --tracking-wider: 0.05em;
   --tracking-widest: 0.1em;
 
@@ -150,7 +145,6 @@
   --space-4: 1rem;       /* 16px */
   --space-5: 1.25rem;    /* 20px */
   --space-6: 1.5rem;     /* 24px */
-  --space-7: 1.75rem;    /* 28px */
   --space-8: 2rem;       /* 32px */
   --space-12: 3rem;      /* 48px */
 
