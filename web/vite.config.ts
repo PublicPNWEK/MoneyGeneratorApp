@@ -75,7 +75,7 @@ const bundleRules: BundleRule[] = [
   },
   {
     name: 'entry-css',
-    maxSize: kilobytes(48),
+    maxSize: kilobytes(40),
     matches: (fileName, item) => item.type === 'asset' && /^assets\/index-.*\.css$/.test(fileName),
   },
   {

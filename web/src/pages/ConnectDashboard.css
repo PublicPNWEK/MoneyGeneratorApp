@@ -695,7 +695,6 @@
   
   .connect-tabs {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
   
   .connect-form-row {

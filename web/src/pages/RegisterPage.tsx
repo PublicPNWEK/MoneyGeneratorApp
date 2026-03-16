@@ -138,9 +138,8 @@ export const RegisterPage: React.FC = () => {
             {password && (
               <div className="password-strength">
                 <div className="password-strength-bar">
-                  <div 
-                    className={`password-strength-fill strength-${passwordStrength}`}
-                    style={{ width: `${passwordStrength * 25}%` }}
+                  <div
+                    className={`password-strength-fill strength-${passwordStrength} strength-width-${passwordStrength}`}
                   />
                 </div>
                 <div className="password-checks">

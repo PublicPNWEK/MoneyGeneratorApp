@@ -176,9 +176,16 @@
 
 .password-strength-fill {
   height: 100%;
+  width: 0;
   border-radius: var(--radius-full);
   transition: width var(--transition-normal), background-color var(--transition-normal);
 }
+
+.password-strength-fill.strength-width-0 { width: 0; }
+.password-strength-fill.strength-width-1 { width: 25%; }
+.password-strength-fill.strength-width-2 { width: 50%; }
+.password-strength-fill.strength-width-3 { width: 75%; }
+.password-strength-fill.strength-width-4 { width: 100%; }
 
 .password-strength-fill.strength-1 { background: var(--color-error); }
 .password-strength-fill.strength-2 { background: var(--color-warning); }
