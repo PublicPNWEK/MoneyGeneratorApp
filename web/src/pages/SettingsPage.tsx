@@ -1,19 +1,152 @@
-import React, { useState } from 'react';
-import { Globe, Shield, CreditCard, LogOut, Download, KeyRound } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Globe, Shield, CreditCard, LogOut, Download, KeyRound, Wallet, Moon, Sun, Check } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
+import { useTheme } from '../context/ThemeContext';
 import { GuidedTour, useTourNavigation, useOnboarding, EducationalHint } from '../utils/onboardingSystem';
+import { apiFetchJson, apiFetchText, getUserId } from '../lib/apiClient';
+import './SettingsPage.css';
 
 export const SettingsPage: React.FC = () => {
-    const { userProfile, openCheckout } = useAppContext();
+  const { userProfile, openCheckout, upgradeSubscription, cancelSubscription } = useAppContext();
+        // --- Billing/Subscription Management Enhancements ---
+        const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+        const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+    const [billingAction, setBillingAction] = useState<null | 'cancel' | 'downgrade'>(null);
+        const PLANS = [
+          {
+            id: 'plan_free',
+            name: 'Free',
+            price: 0,
+            annualPrice: 0,
+            features: [
+              'Basic earnings tracking',
+              'Manual transaction entry',
+              'Monthly email reports',
+              'Community support',
+              '1 connected platform',
+            ],
+          },
+          {
+            id: 'plan_pro',
+            name: 'Pro',
+            price: 14.99,
+            annualPrice: 119.88,
+            features: [
+              'Everything in Free, plus:',
+              'Advanced analytics dashboard',
+              'Bank account integration',
+              'Instant payout tracking',
+              'Smart automations',
+              'Priority email support',
+              'Unlimited platforms',
+              'Export to CSV/PDF',
+            ],
+          },
+          {
+            id: 'plan_enterprise',
+            name: 'Enterprise',
+            price: 49.99,
+            annualPrice: 479.88,
+            features: [
+              'Everything in Pro, plus:',
+              'Team management (up to 10)',
+              'Custom integrations',
+              'Full API access',
+              'Dedicated account manager',
+              'Phone support',
+              'Custom reports',
+              'SLA guarantee',
+            ],
+          },
+        ];
+        const ADDONS = [
+          { id: 'addon_shift_insights', name: 'Shift Insights', price: 4.99, description: 'Deep per-shift profitability analysis with AI recommendations', icon: '📊' },
+          { id: 'addon_tax_prep', name: 'Tax Prep Bundle', price: 9.99, description: 'Automated tax categorization, quarterly estimates & export', icon: '📋' },
+          { id: 'addon_mileage', name: 'Mileage Tracker', price: 3.99, description: 'GPS-based automatic mileage logging with IRS reports', icon: '🚗' },
+          { id: 'addon_receipts', name: 'Receipt Scanner', price: 2.99, description: 'OCR receipt capture and automatic expense categorization', icon: '🧾' },
+        ];
+        const currentPlanId = userProfile?.subscription ?? 'plan_free';
+        const isCurrentPlan = (planId: string) => currentPlanId === planId;
+        const getPrice = (plan: any) => billingCycle === 'monthly' ? plan.price : plan.annualPrice / 12;
+        const formatPrice = (price: number) => price === 0 ? 'Free' : `$${price.toFixed(2)}`;
+        const handleSelectPlan = (planId: string) => {
+          if (isCurrentPlan(planId)) return;
+          openCheckout();
+        };
+        const handleCancelPlan = async () => {
+          if (billingAction) return;
+          setBillingAction('cancel');
+          try {
+            await cancelSubscription();
+          } finally {
+            setBillingAction(null);
+          }
+        };
+        const handleDowngradePlan = async () => {
+          if (billingAction) return;
+          setBillingAction('downgrade');
+          try {
+            await upgradeSubscription('plan_free', [], { billingCycle: 'monthly' });
+          } finally {
+            setBillingAction(null);
+          }
+        };
+        const toggleAddon = (addonId: string) => {
+          setSelectedAddons(prev => prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]);
+        };
+        const annualSavings = Math.round(((14.99 * 12 - 119.88) / (14.99 * 12)) * 100);
     const { showToast } = useToast();
+    const { theme, toggleTheme } = useTheme();
     const { markTutorialWatched, user } = useOnboarding();
     const [language, setLanguage] = useState('en-US');
     const [currency, setCurrency] = useState('USD');
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [payoutMethods, setPayoutMethods] = useState({ paypal: true, crypto: false, giftcard: false });
+    const [withdrawalThreshold, setWithdrawalThreshold] = useState('low');
     const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
     const [isExporting, setIsExporting] = useState(false);
     const [dismissedHints, setDismissedHints] = useState<string[]>([]);
+    const [settingsSaving, setSettingsSaving] = useState(false);
+
+    const userId = useMemo(() => getUserId(), []);
+
+    const saveProfileSettings = async (partial: Record<string, unknown>) => {
+      setSettingsSaving(true);
+      try {
+        const res = await apiFetchJson<{ settings?: any }>('/api/v1/profile/settings', {
+          method: 'PUT',
+          body: { userId, ...partial },
+        });
+        return res?.settings;
+      } finally {
+        setSettingsSaving(false);
+      }
+    };
+
+    useEffect(() => {
+      (async () => {
+        try {
+          const data = await apiFetchJson<{ settings?: any }>(`/api/v1/profile/settings?userId=${encodeURIComponent(userId)}`);
+          const s = data?.settings;
+          if (!s) return;
+
+          if (typeof s.language === 'string') setLanguage(s.language);
+          if (typeof s.currency === 'string') setCurrency(s.currency);
+          if (typeof s.twoFactorEnabled === 'boolean') setTwoFactorEnabled(s.twoFactorEnabled);
+          if (s.payoutMethods && typeof s.payoutMethods === 'object') {
+            setPayoutMethods({
+              paypal: Boolean(s.payoutMethods.paypal),
+              crypto: Boolean(s.payoutMethods.crypto),
+              giftcard: Boolean(s.payoutMethods.giftcard),
+            });
+          }
+          if (typeof s.withdrawalThreshold === 'string') setWithdrawalThreshold(s.withdrawalThreshold);
+        } catch {
+          // ignore
+        }
+      })();
+    }, [userId]);
 
     const settingsTourSteps = [
       {
@@ -54,23 +187,29 @@ export const SettingsPage: React.FC = () => {
     const shouldShowTour = user.role && !user.tutorialsWatched.includes('settings-tour');
     const shouldShow2FAHint = !dismissedHints.includes('2fa') && !twoFactorEnabled;
 
-    const handleEnable2FA = () => {
+    const handleEnable2FA = async () => {
       setTwoFactorEnabled(true);
-      showToast('2FA enabled with backup codes created', 'success');
+      try {
+        await saveProfileSettings({ twoFactorEnabled: true });
+        showToast('2FA enabled with backup codes created', 'success');
+      } catch {
+        setTwoFactorEnabled(false);
+        showToast('2FA enable failed. Please retry.', 'error');
+      }
     };
 
     const handleExport = async () => {
       setIsExporting(true);
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const userId = getUserId();
+      const year = new Date().getFullYear();
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
 
       try {
         if (exportFormat === 'csv') {
-          const res = await fetch(`${apiUrl}/api/v1/expenses/export?userId=demo-user&year=${new Date().getFullYear()}&format=csv`);
-          if (!res.ok) throw new Error('export_failed');
-          const data = await res.json();
-          const expenseRows = data.expenses?.map((e: any) => [e.date, e.categoryName, e.amount, e.description].join(',')) || [];
-          const header = 'date,category,amount,description';
-          const csv = [header, ...expenseRows].join('\n');
+          const csv = await apiFetchText(
+            `/api/v2/reporting/export-csv?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&type=all&userId=${encodeURIComponent(userId)}`
+          );
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -79,9 +218,7 @@ export const SettingsPage: React.FC = () => {
           a.click();
           URL.revokeObjectURL(url);
         } else {
-          const res = await fetch(`${apiUrl}/api/v1/compliance/export?userId=demo-user`);
-          if (!res.ok) throw new Error('export_failed');
-          const data = await res.json();
+          const data = await apiFetchJson<any>(`/api/v1/compliance/export?userId=${encodeURIComponent(userId)}`);
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -100,7 +237,97 @@ export const SettingsPage: React.FC = () => {
     };
 
   return (
-    <div className="settings-page" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="settings-page">
+      {/* --- Subscription & Billing Section --- */}
+      <div className="card elevated settings-card" data-tour="billing-section">
+        <div className="settings-section-header">
+          <h3>Subscription & Billing</h3>
+        </div>
+        <div className="settings-grid">
+          <div className="setting-row">
+            <div className="setting-info">
+              <CreditCard size={20} className="setting-icon" />
+              <div>
+                <div className="setting-label">Current Plan</div>
+                <div className="setting-value">{PLANS.find(p => p.id === currentPlanId)?.name || 'Free'}</div>
+              </div>
+            </div>
+            {currentPlanId !== 'plan_free' && (
+              <div className="subscription-actions">
+                <button className="button secondary" onClick={handleCancelPlan} disabled={billingAction === 'cancel'}>
+                  {billingAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                </button>
+                <button className="button secondary" onClick={handleDowngradePlan} disabled={billingAction === 'downgrade'}>
+                  {billingAction === 'downgrade' ? 'Downgrading…' : 'Downgrade to Free'}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="setting-row">
+            <div className="setting-info">
+              <span className="setting-label">Billing Cycle</span>
+            </div>
+            <div className="billing-toggle">
+              <button className={`toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
+              <button className={`toggle-btn ${billingCycle === 'annual' ? 'active' : ''}`} onClick={() => setBillingCycle('annual')}>
+                Annual <span className="savings-badge">Save {annualSavings}%</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="plans-grid plans-grid-top">
+          {PLANS.map((plan) => (
+            <div key={plan.id} className={`plan-card ${isCurrentPlan(plan.id) ? 'current' : ''}`}>
+              <div className="plan-header">
+                <h4>{plan.name}</h4>
+                <p>{plan.features[1]}</p>
+              </div>
+              <div className="plan-pricing">
+                <span className="price">{formatPrice(getPrice(plan))}</span>
+                {plan.price > 0 && <span className="period">/month</span>}
+                {billingCycle === 'annual' && plan.annualPrice > 0 && (
+                  <div className="annual-total">Billed ${plan.annualPrice.toFixed(2)}/year</div>
+                )}
+              </div>
+              <ul className="plan-features">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx}><Check size={14} className="feature-check" /> {feature}</li>
+                ))}
+              </ul>
+              <button className="button primary" onClick={() => handleSelectPlan(plan.id)} disabled={isCurrentPlan(plan.id)}>
+                {isCurrentPlan(plan.id) ? 'Current Plan' : 'Select'}
+              </button>
+              {/* Trial/Proration Info */}
+              {plan.id === 'plan_pro' && !isCurrentPlan(plan.id) && (
+                <div className="trial-info">14-day free trial. Cancel anytime.</div>
+              )}
+              {isCurrentPlan(plan.id) && plan.id !== 'plan_free' && (
+                <div className="proration-info">Prorated billing applies to plan changes.</div>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Add-ons Section */}
+        <div className="addons-section addons-section-top">
+          <h4>Power Up with Add-ons</h4>
+          <div className="addons-grid">
+            {ADDONS.map((addon) => (
+              <div key={addon.id} className={`addon-card ${selectedAddons.includes(addon.id) ? 'selected' : ''}`} onClick={() => toggleAddon(addon.id)}>
+                <div className="addon-icon">{addon.icon}</div>
+                <div className="addon-info">
+                  <h5>{addon.name}</h5>
+                  <p>{addon.description}</p>
+                </div>
+                <div className="addon-price">
+                  <span>${addon.price.toFixed(2)}</span>
+                  <span className="period">/mo</span>
+                </div>
+                <div className="addon-checkbox">{selectedAddons.includes(addon.id) && <Check size={14} />}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       {tour.isActive && (
         <GuidedTour
           steps={settingsTourSteps}
@@ -123,8 +350,8 @@ export const SettingsPage: React.FC = () => {
         />
       )}
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-6)' }}>
-        <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700 }}>Settings</h1>
+      <div className="page-header">
+        <h1>Settings</h1>
         {shouldShowTour && (
           <button
             className="button primary"
@@ -136,17 +363,17 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Account Settings */}
-      <div className="card elevated" data-tour="profile-section" style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Account Settings</h3>
+      <div className="card elevated settings-card" data-tour="profile-section">
+        <div className="settings-section-header">
+          <h3>Account Settings</h3>
         </div>
-        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <CreditCard size={20} style={{ color: 'var(--color-emerald-600)' }} />
+        <div className="settings-grid">
+          <div className="setting-row">
+            <div className="setting-info">
+              <CreditCard size={20} className="setting-icon" />
               <div>
-                <div style={{ fontWeight: 600 }}>Subscription</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{userProfile.subscription || 'Free Plan'}</div>
+                <div className="setting-label">Subscription</div>
+                <div className="setting-value">{userProfile.subscription || 'Free Plan'}</div>
               </div>
             </div>
             <button className="button primary" onClick={openCheckout}>Upgrade</button>
@@ -155,43 +382,75 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Preferences */}
-      <div className="card elevated" data-tour="security-section" style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Preferences</h3>
+      <div className="card elevated settings-card" data-tour="security-section">
+        <div className="settings-section-header">
+          <h3>Preferences</h3>
         </div>
-        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-          <div style={{ paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-              <Globe size={20} style={{ color: 'var(--color-emerald-600)' }} />
-              <label style={{ fontWeight: 600 }}>Language</label>
+        <div className="settings-grid">
+          <div className="setting-row">
+            <div className="setting-info">
+              {theme === 'dark' ? <Moon size={20} className="setting-icon" /> : <Sun size={20} className="setting-icon" />}
+              <div>
+                <div className="setting-label">Appearance</div>
+                <div className="setting-value">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</div>
+              </div>
             </div>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%', maxWidth: '300px' }}>
+            <label className="toggle-switch-label">
+              <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} aria-label="Toggle dark mode" />
+              <span className="slider"></span>
+            </label>
+          </div>
+
+          <div className="setting-input-group">
+            <div className="setting-label-row">
+              <Globe size={20} className="setting-icon" />
+              <label htmlFor="setting-language" className="setting-label">Language</label>
+            </div>
+            <select 
+              id="setting-language" 
+              value={language} 
+              onChange={(e) => {
+                const next = e.target.value;
+                setLanguage(next);
+                saveProfileSettings({ language: next }).catch(() => null);
+              }} 
+              className="setting-select"
+            >
               <option value="en-US">English (US)</option>
               <option value="es-MX">Español (LatAm)</option>
               <option value="fr-FR">Français</option>
             </select>
           </div>
-          <div style={{ paddingBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-              <Globe size={20} style={{ color: 'var(--color-emerald-600)' }} />
-              <label style={{ fontWeight: 600 }}>Currency</label>
+          <div className="setting-input-group">
+            <div className="setting-label-row">
+              <Globe size={20} className="setting-icon" />
+              <label htmlFor="setting-currency" className="setting-label">Currency</label>
             </div>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', width: '100%', maxWidth: '300px' }}>
+            <select 
+              id="setting-currency" 
+              value={currency} 
+              onChange={(e) => {
+                const next = e.target.value;
+                setCurrency(next);
+                saveProfileSettings({ currency: next }).catch(() => null);
+              }} 
+              className="setting-select"
+            >
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
               <option value="MXN">MXN</option>
             </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <Shield size={20} style={{ color: 'var(--color-emerald-600)' }} />
+          <div className="setting-row setting-row-no-border">
+            <div className="setting-info">
+              <Shield size={20} className="setting-icon" />
               <div>
-                <div style={{ fontWeight: 600 }}>Two-Factor Authentication</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{twoFactorEnabled ? '✓ Enabled' : '○ Not Enabled'}</div>
+                <div className="setting-label">Two-Factor Authentication</div>
+                <div className="setting-value">{twoFactorEnabled ? '✓ Enabled' : '○ Not Enabled'}</div>
               </div>
             </div>
             {!twoFactorEnabled ? (
-              <button className="button primary" onClick={handleEnable2FA}>Enable 2FA</button>
+              <button className="button primary" onClick={handleEnable2FA} disabled={settingsSaving}>Enable 2FA</button>
             ) : (
               <button className="button secondary"><KeyRound size={14} /> Backup codes</button>
             )}
@@ -199,21 +458,128 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Data Export */}
-      <div className="card elevated" data-tour="billing-section" style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-          <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Data & Export</h3>
+      {/* Payout Preferences */}
+      <div className="card elevated settings-card">
+        <div className="settings-section-header">
+          <h3>
+            <Wallet size={20} className="setting-icon" /> Payout Preferences
+          </h3>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+        
+        <div className="settings-grid">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-              <Download size={20} style={{ color: 'var(--color-emerald-600)' }} />
-              <span style={{ fontWeight: 600 }}>Export your data</span>
+            <label className="setting-label setting-label-block">Preferred Payment Methods</label>
+            <div className="payout-methods-group">
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.paypal} 
+                  onChange={() => {
+                    setPayoutMethods((p) => {
+                      const next = { ...p, paypal: !p.paypal };
+                      saveProfileSettings({ payoutMethods: next }).catch(() => null);
+                      return next;
+                    });
+                  }} 
+                /> 
+                PayPal
+              </label>
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.crypto} 
+                  onChange={() => {
+                    setPayoutMethods((p) => {
+                      const next = { ...p, crypto: !p.crypto };
+                      saveProfileSettings({ payoutMethods: next }).catch(() => null);
+                      return next;
+                    });
+                  }} 
+                /> 
+                Crypto (BTC/ETH)
+              </label>
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={payoutMethods.giftcard} 
+                  onChange={() => {
+                    setPayoutMethods((p) => {
+                      const next = { ...p, giftcard: !p.giftcard };
+                      saveProfileSettings({ payoutMethods: next }).catch(() => null);
+                      return next;
+                    });
+                  }} 
+                /> 
+                Gift Cards
+              </label>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>CSV or JSON with all transactions, goals, and insights</p>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')} style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+          
+          <div>
+            <label className="setting-label setting-label-block">Minimum Withdrawal Threshold</label>
+            <div className="payout-methods-group">
+              <label className="checkbox-label">
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="low" 
+                  checked={withdrawalThreshold === 'low'} 
+                  onChange={() => {
+                    setWithdrawalThreshold('low');
+                    saveProfileSettings({ withdrawalThreshold: 'low' }).catch(() => null);
+                  }} 
+                /> 
+                Low ($0.50 - $2)
+              </label>
+              <label className="checkbox-label">
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="medium" 
+                  checked={withdrawalThreshold === 'medium'} 
+                  onChange={() => {
+                    setWithdrawalThreshold('medium');
+                    saveProfileSettings({ withdrawalThreshold: 'medium' }).catch(() => null);
+                  }} 
+                /> 
+                Standard ($5 - $20)
+              </label>
+              <label className="checkbox-label">
+                <input 
+                  type="radio" 
+                  name="threshold" 
+                  value="high" 
+                  checked={withdrawalThreshold === 'high'} 
+                  onChange={() => {
+                    setWithdrawalThreshold('high');
+                    saveProfileSettings({ withdrawalThreshold: 'high' }).catch(() => null);
+                  }} 
+                /> 
+                High ($20+)
+              </label>
+            </div>
+            <p className="payout-footer">
+              We'll highlight jobs that match your cashout preferences first.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Export */}
+      <div className="card elevated settings-card" data-tour="billing-section">
+        <div className="settings-section-header">
+          <h3>Data & Export</h3>
+        </div>
+        <div className="export-section">
+          <div>
+            <div className="export-header">
+              <Download size={20} className="setting-icon" />
+              <span>Export your data</span>
+            </div>
+            <p className="export-description">CSV or JSON with all transactions, goals, and insights</p>
+          </div>
+          <div className="export-actions">
+            <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'csv' | 'json')} className="setting-select" aria-label="Export format">
               <option value="csv">CSV</option>
               <option value="json">JSON</option>
             </select>
@@ -223,9 +589,9 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Account Actions */}
-      <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-6)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--border-color)' }}>
-        <button className="button danger" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><LogOut size={16} /> Sign Out</button>
-        <div style={{ marginLeft: 'auto', alignSelf: 'center', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>Version 1.0.0 (Build 2026.03.12)</div>
+      <div className="account-footer">
+        <button className="button danger"><LogOut size={16} /> Sign Out</button>
+        <div className="version-info">Version 1.0.0 (Build 2026.03.12)</div>
       </div>
     </div>
   );

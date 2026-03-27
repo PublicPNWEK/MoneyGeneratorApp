@@ -191,3 +191,61 @@ describe('V2 API Routes - Advanced Analytics', () => {
     expect(res.body.forecast).toEqual(expect.any(Array));
   });
 });
+
+describe('V2 API Routes - Team Features', () => {
+  it('GET /team - returns team info when TEAM_FEATURES enabled', async () => {
+    const res = await request(app)
+      .get('/api/v2/team')
+      .query({ userId: 'teamUserA' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('teamId');
+    expect(res.body).toHaveProperty('plan');
+    expect(res.body).toHaveProperty('members');
+    expect(res.body.members).toEqual(expect.any(Array));
+    expect(res.body).toHaveProperty('sharedWallet');
+  });
+
+  it('POST /team/invite + PATCH role + GET audit - works end-to-end', async () => {
+    const userId = 'teamUserB';
+
+    // Ensure team exists
+    const teamRes = await request(app)
+      .get('/api/v2/team')
+      .query({ userId });
+    expect(teamRes.status).toBe(200);
+
+    // Invite
+    const inviteRes = await request(app)
+      .post('/api/v2/team/invite')
+      .send({ userId, email: 'alex@example.com', role: 'Viewer' });
+    expect(inviteRes.status).toBe(200);
+    expect(inviteRes.body).toHaveProperty('invite');
+    expect(inviteRes.body.invite).toHaveProperty('status');
+
+    // Accept invite -> creates member
+    const acceptRes = await request(app)
+      .post('/api/v2/team/invites/accept')
+      .send({ userId, email: 'alex@example.com', name: 'Alex' });
+    expect(acceptRes.status).toBe(200);
+    expect(acceptRes.body).toHaveProperty('member');
+    expect(acceptRes.body.member).toHaveProperty('id');
+
+    // Update role
+    const roleRes = await request(app)
+      .patch(`/api/v2/team/members/${acceptRes.body.member.id}/role`)
+      .send({ userId, role: 'Manager' });
+    expect(roleRes.status).toBe(200);
+    expect(roleRes.body).toHaveProperty('member');
+    expect(roleRes.body.member.role).toBe('Manager');
+
+    // Audit
+    const auditRes = await request(app)
+      .get('/api/v2/team/audit')
+      .query({ userId, limit: 10 });
+    expect(auditRes.status).toBe(200);
+    expect(auditRes.body).toHaveProperty('entries');
+    expect(auditRes.body.entries).toEqual(expect.any(Array));
+    expect(auditRes.body.entries.length).toBeGreaterThan(0);
+  });
+});

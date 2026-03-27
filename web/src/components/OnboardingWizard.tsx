@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { UserRole } from '../context/AppContext';
 import { Briefcase, Building, User } from 'lucide-react';
+import { useToast } from './Toast';
 import './OnboardingWizard.css';
 
 type OnboardingStep = 'welcome' | 'role' | 'platforms' | 'bank' | 'goals' | 'plan' | 'complete';
 
 interface OnboardingWizardProps {
   onComplete: () => void;
-  onConnectBank: () => void;
+  onConnectBank: () => Promise<boolean>;
   onSelectPlan: (planId: string) => void;
   onSelectRole: (role: UserRole) => void;
-  onConnectPlatform?: (platformId: string) => void;
-  onSetGoal?: (goal: { type: string; target: number }) => void;
+  onConnectPlatform?: (platformId: string) => Promise<boolean> | boolean;
+  onSetGoal?: (goal: { type: string; target: number }) => Promise<boolean> | boolean;
 }
 
 const PLATFORMS = [
@@ -44,6 +45,7 @@ export function OnboardingWizard({
   onConnectPlatform,
   onSetGoal,
 }: OnboardingWizardProps) {
+  const { showToast } = useToast();
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [role, setRole] = useState<UserRole>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -89,26 +91,34 @@ export function OnboardingWizard({
   const handleRoleSelect = (selectedRole: UserRole) => {
     setRole(selectedRole);
     onSelectRole(selectedRole);
-    setTimeout(() => {
-        // Determine next step
-        const nextStep = selectedRole === 'freelancer' ? 'platforms' : 'bank';
-        setStep(nextStep);
-    }, 300);
+    const nextStep = selectedRole === 'freelancer' ? 'platforms' : 'bank';
+    setStep(nextStep);
   };
 
-  const handleConnectBank = () => {
-    onConnectBank();
-    setBankConnected(true);
+  const handleConnectBank = async () => {
+    const ok = await onConnectBank();
+    setBankConnected(ok);
   };
 
-  const handlePlatformToggle = (platformId: string) => {
-    setConnectedPlatforms(prev => {
-      if (prev.includes(platformId)) {
-        return prev.filter(p => p !== platformId);
+  const handlePlatformToggle = async (platformId: string) => {
+    if (connectedPlatforms.includes(platformId)) {
+      setConnectedPlatforms(prev => prev.filter(p => p !== platformId));
+      return;
+    }
+
+    const platformName = PLATFORMS.find((p) => p.id === platformId)?.name ?? 'platform';
+
+    try {
+      const result = await onConnectPlatform?.(platformId);
+      const ok = result !== false;
+      if (!ok) {
+        showToast(`Could not connect ${platformName}. Please retry.`, 'error');
+        return;
       }
-      onConnectPlatform?.(platformId);
-      return [...prev, platformId];
-    });
+      setConnectedPlatforms((prev) => [...prev, platformId]);
+    } catch {
+      showToast(`Could not connect ${platformName}. Please retry.`, 'error');
+    }
   };
 
   const handlePlanSelect = (planId: string) => {
@@ -116,9 +126,20 @@ export function OnboardingWizard({
     onSelectPlan(planId);
   }
 
-  const handleGoalSave = () => {
-    onSetGoal?.({ type: 'weekly_earnings', target: weeklyGoal });
-    handleNext();
+  const handleGoalSave = async () => {
+    try {
+      const r1 = await onSetGoal?.({ type: 'weekly_earnings', target: weeklyGoal });
+      const r2 = await onSetGoal?.({ type: 'tax_reserve_pct', target: taxReserve });
+      const ok1 = r1 !== false;
+      const ok2 = r2 !== false;
+      if (ok1 && ok2) {
+        handleNext();
+        return;
+      }
+      showToast('Could not save goals. Please retry.', 'error');
+    } catch {
+      showToast('Could not save goals. Please retry.', 'error');
+    }
   };
 
   const handleFinish = () => {
@@ -139,7 +160,7 @@ export function OnboardingWizard({
     <div className="onboarding-overlay">
       <div className="onboarding-wizard">
         <div className="onboarding-progress" aria-hidden="true">
-          <div className="progress-bar" style={{ width: `${progress}%` }} />
+          <progress className="progress-bar" value={progress} max={100} />
         </div>
 
         <div className="onboarding-step-label" aria-live="polite">
@@ -173,7 +194,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'freelancer' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('freelancer')}
-                  aria-pressed={role === 'freelancer'}
                   aria-label="Select Freelancer or Gig Worker role"
                 >
                     <div className="role-icon"><Briefcase size={24} /></div>
@@ -185,7 +205,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'business' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('business')}
-                  aria-pressed={role === 'business'}
                   aria-label="Select Business Owner role"
                 >
                     <div className="role-icon"><Building size={24} /></div>
@@ -197,7 +216,6 @@ export function OnboardingWizard({
                   type="button"
                   className={`role-card ${role === 'individual' ? 'selected' : ''}`}
                   onClick={() => handleRoleSelect('individual')}
-                  aria-pressed={role === 'individual'}
                   aria-label="Select Individual role"
                 >
                     <div className="role-icon"><User size={24} /></div>
@@ -222,7 +240,6 @@ export function OnboardingWizard({
                     key={platform.id}
                     className={`platform-card ${connectedPlatforms.includes(platform.id) ? 'selected' : ''}`}
                     onClick={() => handlePlatformToggle(platform.id)}
-                    aria-pressed={connectedPlatforms.includes(platform.id)}
                     aria-label={`Toggle ${platform.name}`}
                   >
                     <span className="platform-icon">{platform.icon}</span>
@@ -291,9 +308,6 @@ export function OnboardingWizard({
                     value={weeklyGoal}
                     onChange={(e) => setWeeklyGoal(Number(e.target.value))}
                     className="goal-slider"
-                    aria-valuemin={100}
-                    aria-valuemax={5000}
-                    aria-valuenow={weeklyGoal}
                     aria-label="Weekly goal"
                   />
                 </div>
@@ -312,9 +326,6 @@ export function OnboardingWizard({
                     value={taxReserve}
                     onChange={(e) => setTaxReserve(Number(e.target.value))}
                     className="goal-slider"
-                    aria-valuemin={10}
-                    aria-valuemax={40}
-                    aria-valuenow={taxReserve}
                     aria-label="Tax reserve percentage"
                   />
                 </div>
@@ -341,7 +352,6 @@ export function OnboardingWizard({
                     type="button"
                     className={`plan-card ${selectedPlan === 'plan_free' ? 'selected' : ''}`}
                     onClick={() => handlePlanSelect('plan_free')}
-                    aria-pressed={selectedPlan === 'plan_free'}
                     aria-label="Select Free plan"
                     >
                       <h3>Free</h3>
@@ -356,7 +366,6 @@ export function OnboardingWizard({
                     type="button"
                     className={`plan-card ${selectedPlan === 'plan_pro' ? 'selected' : ''}`}
                     onClick={() => handlePlanSelect('plan_pro')}
-                    aria-pressed={selectedPlan === 'plan_pro'}
                     aria-label="Select Pro plan"
                     >
                       <h3>Pro</h3>
@@ -396,98 +405,6 @@ export function OnboardingWizard({
 
         </div>
       </div>
-      <style>{`
-        .role-cards {
-            display: grid;
-            gap: 1rem;
-            width: 100%;
-        }
-        .role-card {
-            border: 2px solid #e2e8f0;
-            border-radius: 0.75rem;
-            padding: 1rem;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .role-card:hover {
-            border-color: #cbd5e1;
-            background-color: #f8fafc;
-        }
-        .role-card.selected {
-            border-color: #2563eb;
-            background-color: #eff6ff;
-        }
-        .role-icon {
-            color: #2563eb;
-            margin-bottom: 0.25rem;
-        }
-        .role-card h3 {
-            margin: 0;
-            font-size: 1rem;
-            color: #1e293b;
-        }
-        .role-card p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-        .plans-grid {
-             display: grid;
-             grid-template-columns: 1fr 1fr;
-             gap: 1rem;
-             width: 100%;
-             margin-bottom: 1rem;
-        }
-        .plan-card {
-             border: 2px solid #e2e8f0;
-             border-radius: 0.75rem;
-             padding: 1.5rem;
-             cursor: pointer;
-             text-align: center;
-             transition: all 0.2s;
-             position: relative;
-        }
-        .plan-card.selected {
-             border-color: #2563eb;
-             background-color: #eff6ff;
-        }
-        .plan-card .price {
-             font-size: 1.5rem;
-             font-weight: 700;
-             color: #1e293b;
-             margin: 0.5rem 0;
-        }
-        .plan-card .price span {
-             font-size: 0.85rem;
-             font-weight: 400;
-             color: #64748b;
-        }
-        .plan-card ul {
-             list-style: none;
-             padding: 0;
-             font-size: 0.85rem;
-             color: #475569;
-             margin: 0.5rem 0;
-        }
-        .plan-card .check {
-             position: absolute;
-             top: 0.5rem;
-             right: 0.5rem;
-             background: #2563eb;
-             color: white;
-             border-radius: 50%;
-             width: 20px;
-             height: 20px;
-             font-size: 12px;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-        }
-      `}</style>
     </div>
   );
 }

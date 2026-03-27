@@ -1,0 +1,445 @@
+/* --- Subscription & Billing Polish --- */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.plan-card {
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  position: relative;
+}
+.plan-card.current {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-100);
+}
+.plan-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-info);
+  transform: translateY(-2px) scale(1.01);
+}
+.plan-header h4 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.plan-header p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.plan-pricing {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.97rem;
+  margin-bottom: 0.25rem;
+}
+.plan-features li:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.trial-info, .proration-info {
+  font-size: 0.9rem;
+  color: var(--color-info);
+  margin-top: 0.5rem;
+}
+.addons-section {
+  margin-top: 2rem;
+}
+.addons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.addon-card.selected {
+  border-color: var(--color-info);
+  background: rgba(59, 130, 246, 0.08);
+}
+.addon-icon {
+  font-size: 1.5rem;
+}
+.addon-info h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+.addon-info p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.addon-price {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-success);
+  margin-left: auto;
+}
+.addon-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  margin-left: 0.5rem;
+}
+.addon-card.selected .addon-checkbox {
+  background: var(--color-info);
+  border-color: var(--color-info);
+  color: white;
+}
+.billing-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.toggle-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.toggle-btn.active {
+  background: var(--color-info);
+  color: white;
+}
+.savings-badge {
+  background: var(--color-success);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+/* Settings Page Styles */
+
+.settings-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+}
+
+.settings-card {
+  margin-bottom: var(--space-6);
+}
+
+.settings-section-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.settings-section-header h3 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.subscription-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.plans-grid-top {
+  margin-top: var(--space-4);
+}
+
+.addons-section-top {
+  margin-top: var(--space-6);
+}
+
+.setting-row-no-border {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.setting-label-block {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+}
+
+.setting-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.setting-icon {
+  color: var(--color-emerald-600);
+}
+
+.setting-label {
+  font-weight: 600;
+}
+
+.setting-value {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.setting-input-group {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.setting-select {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  width: 100%;
+  max-width: 300px;
+}
+
+.payout-methods-group {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.payout-footer {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+.export-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.export-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.export-header span {
+  font-weight: 600;
+}
+
+.export-description {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.export-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.account-footer {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-color);
+}
+
+.version-info {
+  margin-left: auto;
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 0 var(--space-3);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .subscription-actions,
+  .export-actions,
+  .account-footer {
+    flex-wrap: wrap;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .setting-select {
+    max-width: none;
+  }
+
+  .export-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .export-actions {
+    width: 100%;
+  }
+
+  .export-actions > * {
+    flex: 1;
+  }
+
+  .version-info {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .plans-grid,
+  .addons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .addon-card {
+    align-items: flex-start;
+  }
+}
+
+/* Toggle Switch */
+.toggle-switch-label {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.toggle-switch-label input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-charcoal-300);
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+input:checked + .slider {
+    background-color: var(--color-emerald-500);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--color-emerald-500);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+
+.version-info {
+  margin-left: auto;
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}

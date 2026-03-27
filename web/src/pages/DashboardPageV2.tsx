@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, CheckCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { Card, CardBody, CardFooter } from '../components/Card';
 import { Button } from '../components/Button';
 import { useAppContext } from '../context/AppContext';
 import { useToast } from '../components/Toast';
+import { useNavigate } from 'react-router-dom';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
+import { ErrorState, SkeletonMetricCard, SkeletonCard, Skeleton } from '../components';
 import './DashboardPageV2.css';
 
 interface StatItem {
@@ -23,38 +26,115 @@ interface InsightItem {
   action?: { label: string; onClick: () => void };
 }
 
+interface AnalyticsSummary {
+  totalEarnings: number;
+  totalExpenses: number;
+  netIncome: number;
+  hoursWorked: number;
+  hourlyRate: number;
+  trend: {
+    direction: 'up' | 'down';
+    percent: number;
+  };
+}
+
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  occurredAt: string;
+  amount?: number | null;
+}
+
 export const DashboardPageV2: React.FC = () => {
   const { userProfile, connectBank, openCheckout } = useAppContext();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<StatItem[]>([]);
   const [insights, setInsights] = useState<InsightItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
 
+  // Fetch analytics data from backend
+  const fetchDashboardData = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsRefreshing(true);
+
+    const userId = getUserId();
+    if (!userId) {
+      setStats([]);
+      setActivity([]);
+      setLoadError('Sign in to view your dashboard.');
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    try {
+      const [analyticsResult, activityResult] = await Promise.allSettled([
+        apiFetchJson<{
+        summary: AnalyticsSummary;
+      }>(`/api/v2/analytics/summary?userId=${encodeURIComponent(userId)}&period=30d`),
+        apiFetchJson<{ items?: ActivityItem[] }>(`/api/v2/activity/recent?userId=${encodeURIComponent(userId)}&limit=5`),
+      ]);
+
+      if (analyticsResult.status === 'fulfilled' && analyticsResult.value?.summary) {
+        const summary = analyticsResult.value.summary;
+        setStats([
+          {
+            label: 'Total Earnings',
+            value: `$${summary.totalEarnings.toLocaleString()}`,
+            trend: { 
+              direction: summary.trend?.direction || 'up', 
+              percent: summary.trend?.percent || 0 
+            },
+            icon: <TrendingUp size={20} />,
+          },
+          {
+            label: 'Net Income',
+            value: `$${summary.netIncome.toLocaleString()}`,
+          },
+          {
+            label: 'Hourly Rate',
+            value: `$${summary.hourlyRate.toFixed(2)}`,
+          },
+          {
+            label: 'Hours Worked',
+            value: summary.hoursWorked.toFixed(1),
+          },
+        ]);
+        setLoadError(null);
+      } else {
+        setStats([]);
+        setLoadError('Live dashboard analytics could not be loaded.');
+      }
+
+      if (activityResult.status === 'fulfilled') {
+        setActivity(activityResult.value?.items || []);
+        setActivityError(null);
+      } else {
+        setActivity([]);
+        setActivityError('Recent activity is unavailable right now.');
+      }
+
+      setLastUpdated(new Date());
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Fetch data on mount
   useEffect(() => {
-    // Load dashboard data
-    setStats([
-      {
-        label: 'Total Earnings',
-        value: `$${userProfile.earnings.toLocaleString()}`,
-        trend: { direction: 'up', percent: userProfile.weeklyChange },
-        icon: <TrendingUp size={20} />,
-      },
-      {
-        label: 'This Week',
-        value: `$${(userProfile.earnings / 4).toLocaleString()}`,
-        trend: { direction: 'up', percent: 8 },
-      },
-      {
-        label: 'Hourly Rate',
-        value: '$17.50',
-        trend: { direction: 'up', percent: 5 },
-      },
-      {
-        label: 'Hours Worked',
-        value: '142.5',
-        trend: { direction: 'down', percent: -2 },
-      },
-    ]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
+  // Set up insights based on user profile
+  useEffect(() => {
     setInsights([
       {
         type: userProfile.bankConnected ? 'positive' : 'warning',
@@ -75,11 +155,131 @@ export const DashboardPageV2: React.FC = () => {
       {
         type: 'neutral',
         title: 'Tax Reserve Check',
-        description: 'You are pacing $38 under your weekly tax reserve target. Adjust if needed.',
-        action: { label: 'View Reserves', onClick: () => showToast('Tax reserves feature coming soon', 'info') },
+        description: 'Review your latest tax summary and reserve targets before your next estimated payment.',
+        action: {
+          label: 'View Reserves',
+          onClick: async () => {
+            try {
+              const year = new Date().getFullYear();
+              await apiFetchJson(`/api/v2/reporting/tax-summary?year=${encodeURIComponent(String(year))}`);
+            } catch {
+              // ignore
+            }
+            navigate('/taxes');
+          },
+        },
       },
     ]);
-  }, [userProfile, connectBank, openCheckout, showToast]);
+  }, [userProfile, connectBank, openCheckout, navigate]);
+
+  // Set up auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData(false); // Silent refresh
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
+
+  const handleRefresh = () => {
+    fetchDashboardData(true);
+    showToast('Dashboard refreshed', 'success');
+  };
+
+  const handleExportData = async () => {
+    try {
+      const userId = getUserId();
+      const data = await apiFetchJson<any>(`/api/v2/export/summary?userId=${encodeURIComponent(userId)}`);
+      const count = Array.isArray(data?.availableExports) ? data.availableExports.length : 0;
+      showToast(`Export options loaded (${count}).`, 'success');
+      navigate('/settings');
+    } catch {
+      showToast('Export unavailable. Please retry.', 'error');
+    }
+  };
+
+  const handleBilling = async () => {
+    try {
+      const data = await apiFetchJson<any>('/api/v2/subscriptions/billing-portal');
+      const url = data?.portalUrl;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        showToast('No billing portal available.', 'info');
+      }
+    } catch {
+      showToast('Billing portal unavailable. Please retry.', 'error');
+    }
+  };
+
+  const handleLoadActivity = async () => {
+    try {
+      const userId = getUserId();
+      const data = await apiFetchJson<any>(`/api/v2/activity/recent?userId=${encodeURIComponent(userId)}&limit=50`);
+      setActivity(Array.isArray(data?.items) ? data.items.slice(0, 5) : []);
+      setActivityError(null);
+      const count = Array.isArray(data?.items) ? data.items.length : 0;
+      showToast(`Loaded ${count} activity items.`, 'success');
+    } catch {
+      setActivityError('Unable to load activity. Please retry.');
+      showToast('Unable to load activity. Please retry.', 'error');
+    }
+  };
+
+  const formatActivityTime = (value: string) => {
+    const date = new Date(value);
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Less than an hour ago';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getActivityIcon = (item: ActivityItem) => {
+    if (item.type === 'expense') return '⛽';
+    if (item.type === 'income') return '💸';
+    if (item.type === 'milestone') return '🎯';
+    if (item.type === 'subscription') return '💳';
+    return '📌';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="dashboard-v2">
+        {/* Hero Skeleton */}
+        <section className="dashboard-hero">
+          <div className="hero-content">
+            <Skeleton width="60%" height="2rem" />
+            <Skeleton width="80%" height="1rem" className="mt-2" />
+          </div>
+        </section>
+        
+        {/* Stats Skeleton */}
+        <section className="dashboard-stats">
+          <div className="stats-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonMetricCard key={i} />
+            ))}
+          </div>
+        </section>
+
+        {/* Content Skeleton */}
+        <section className="dashboard-content">
+          <div className="dashboard-main">
+            <SkeletonCard descriptionLines={3} />
+            <SkeletonCard descriptionLines={3} />
+          </div>
+          <aside className="dashboard-sidebar">
+            <SkeletonCard descriptionLines={2} showAvatar={false} />
+            <SkeletonCard descriptionLines={2} showAvatar={false} />
+          </aside>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-v2">
@@ -88,30 +288,60 @@ export const DashboardPageV2: React.FC = () => {
         <div className="hero-content">
           <h1 className="hero-title">Welcome back! 👋</h1>
           <p className="hero-subtitle">Here's your financial snapshot for today</p>
+          {lastUpdated && (
+            <p className="hero-updated">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+        <div className="hero-actions">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <Loader2 size={16} className="spinning" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
         </div>
       </section>
 
       {/* Stats Grid */}
       <section className="dashboard-stats">
-        <div className="stats-grid">
-          {stats.map((stat, idx) => (
-            <Card key={idx} elevated>
-              <div className="stat-card-content">
-                <div className="stat-card-header">
-                  <span className="stat-label">{stat.label}</span>
-                  {stat.icon && <span className="stat-icon">{stat.icon}</span>}
-                </div>
-                <div className="stat-card-value">{stat.value}</div>
-                {stat.trend && (
-                  <div className={`stat-trend stat-trend-${stat.trend.direction}`}>
-                    {stat.trend.direction === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                    {Math.abs(stat.trend.percent)}% from last week
+        {loadError && stats.length === 0 ? (
+          <ErrorState
+            type="server"
+            title="Dashboard unavailable"
+            message={loadError}
+            onRetry={handleRefresh}
+            isRetrying={isRefreshing}
+          />
+        ) : (
+          <div className="stats-grid">
+            {stats.map((stat, idx) => (
+              <Card key={idx} elevated>
+                <div className="stat-card-content">
+                  <div className="stat-card-header">
+                    <span className="stat-label">{stat.label}</span>
+                    {stat.icon && <span className="stat-icon">{stat.icon}</span>}
                   </div>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+                  <div className="stat-card-value">{stat.value}</div>
+                  {stat.trend && (
+                    <div className={`stat-trend stat-trend-${stat.trend.direction}`}>
+                      {stat.trend.direction === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                      {Math.abs(stat.trend.percent)}% from last week
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Insights & Alerts */}
@@ -147,28 +377,28 @@ export const DashboardPageV2: React.FC = () => {
       <section className="dashboard-actions">
         <h2 className="section-title">Quick Actions</h2>
         <div className="actions-grid">
-          <Card interactive onClick={() => showToast('Job Marketplace coming soon', 'info')}>
+          <Card interactive onClick={() => navigate('/jobs')}>
             <CardBody>
               <div className="action-icon-large">💼</div>
               <h3 className="action-title">Find Jobs</h3>
               <p className="action-description">Discover high-paying opportunities near you</p>
             </CardBody>
           </Card>
-          <Card interactive onClick={() => showToast('Analytics coming soon', 'info')}>
+          <Card interactive onClick={() => navigate('/reports')}>
             <CardBody>
               <div className="action-icon-large">📊</div>
               <h3 className="action-title">View Analytics</h3>
               <p className="action-description">Deep dive into your earnings & expenses</p>
             </CardBody>
           </Card>
-          <Card interactive onClick={() => showToast('Export coming soon', 'info')}>
+          <Card interactive onClick={handleExportData}>
             <CardBody>
               <div className="action-icon-large">📥</div>
               <h3 className="action-title">Export Data</h3>
               <p className="action-description">Download reports for tax prep or records</p>
             </CardBody>
           </Card>
-          <Card interactive onClick={() => showToast('Billing coming soon', 'info')}>
+          <Card interactive onClick={handleBilling}>
             <CardBody>
               <div className="action-icon-large">💳</div>
               <h3 className="action-title">Billing</h3>
@@ -183,35 +413,38 @@ export const DashboardPageV2: React.FC = () => {
         <h2 className="section-title">Recent Activity</h2>
         <Card>
           <CardBody>
-            <div className="activity-list">
-              <div className="activity-item">
-                <div className="activity-icon">📦</div>
-                <div className="activity-details">
-                  <p className="activity-title">Package Delivery - Downtown</p>
-                  <p className="activity-time">Today at 2:30 PM</p>
-                </div>
-                <div className="activity-amount">+$45.00</div>
+            {activityError && activity.length === 0 ? (
+              <ErrorState
+                type="server"
+                title="Activity unavailable"
+                message={activityError}
+                onRetry={handleLoadActivity}
+                inline
+                size="sm"
+              />
+            ) : activity.length === 0 ? (
+              <div className="activity-empty">No recent activity yet.</div>
+            ) : (
+              <div className="activity-list">
+                {activity.map((item) => (
+                  <div key={item.id} className="activity-item">
+                    <div className="activity-icon">{getActivityIcon(item)}</div>
+                    <div className="activity-details">
+                      <p className="activity-title">{item.title}</p>
+                      <p className="activity-time">{formatActivityTime(item.occurredAt)}</p>
+                    </div>
+                    {typeof item.amount === 'number' && (
+                      <div className={`activity-amount ${item.amount < 0 ? '-amount' : ''}`}>
+                        {item.amount >= 0 ? '+' : '-'}${Math.abs(item.amount).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="activity-item">
-                <div className="activity-icon">🚗</div>
-                <div className="activity-details">
-                  <p className="activity-title">Rideshare Earnings</p>
-                  <p className="activity-time">Today at 12:15 PM</p>
-                </div>
-                <div className="activity-amount">+$32.50</div>
-              </div>
-              <div className="activity-item">
-                <div className="activity-icon">⛽</div>
-                <div className="activity-details">
-                  <p className="activity-title">Gas Expense</p>
-                  <p className="activity-time">Yesterday at 6:00 PM</p>
-                </div>
-                <div className="activity-amount">-$45.00</div>
-              </div>
-            </div>
+            )}
           </CardBody>
           <CardFooter align="center">
-            <Button variant="ghost" onClick={() => showToast('Activities coming soon', 'info')}>
+            <Button variant="ghost" onClick={handleLoadActivity}>
               View All Activity
             </Button>
           </CardFooter>

@@ -1,19 +1,20 @@
 ## How to test locally
 
-This project has two Jest suites: the React Native app and the Node backend. No real PayPal or Plaid credentials are required—webhooks are signed using demo secrets and provider calls are mocked.
+This repository currently has one automated test suite: the Node/Express backend. The web app is validated through linting and production builds rather than a frontend Jest or Vitest suite. No real PayPal or Plaid credentials are required for backend tests because webhook secrets default to demo values and provider calls are mocked.
 
 ### Commands
 
-- Run app tests: `npm test`
-- Run backend tests: `npm run test:server`
-- Run everything (CI-equivalent): `npm run test:ci`
+- Run backend tests: `npm test`
+- Run backend tests directly: `npm run test:server`
+- Verify the frontend release build: `npm run build:budget`
+- Lint the web app: `npm run lint`
+- Smoke-check a running backend: `SMOKE_BASE_URL=http://localhost:4000 npm run smoke:prod`
 
-### Sample webhook payloads
+## Sample webhook payloads
 
 Secrets default to `demo-paypal-secret` and `demo-plaid-secret`. Use the HMAC helper below to generate a matching signature for manual testing.
 
 ```bash
-# Generate signatures for sample payloads
 node - <<'NODE'
 const crypto = require('crypto');
 const sign = (secret, body) => crypto.createHmac('sha256', secret).update(body).digest('hex');
@@ -28,7 +29,7 @@ console.log('Plaid body:', plaidBody);
 NODE
 ```
 
-Send the payloads to the local server (default port `4000` if running `node server/src/index.js`):
+Send the payloads to the local server running on port `4000`:
 
 ```bash
 curl -X POST http://localhost:4000/webhooks/paypal \
@@ -42,4 +43,23 @@ curl -X POST http://localhost:4000/webhooks/plaid \
   -d '<plaid-body-from-script>'
 ```
 
-Both endpoints are idempotent: re-sending the same payload will return `{ "status": "duplicate" }`.
+Both endpoints are idempotent: re-sending the same payload returns `{ "status": "duplicate" }`.
+
+## Production smoke script
+
+The repository includes a lightweight smoke script at `scripts/smoke-check.mjs`.
+
+It verifies:
+
+- `GET /health`
+- `GET /catalog`
+- `POST /api/v2/assets/upload-url`
+- `GET /api/v2/ops/overview` when `SMOKE_OPERATOR_TOKEN` is provided
+
+Example:
+
+```bash
+SMOKE_BASE_URL=https://your-backend.example \
+SMOKE_OPERATOR_TOKEN=your-operator-token \
+npm run smoke:prod
+```

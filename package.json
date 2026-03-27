@@ -1,21 +1,38 @@
 {
   "name": "MoneyGeneratorApp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
+  "description": "Money Generator App - Web Application",
   "scripts": {
     "dev": "cd web && npm run dev",
     "build": "cd web && npm run build",
+    "build:budget": "cd web && npm run build:budget",
+    "analyze": "cd web && npm run analyze",
     "preview": "cd web && npm run preview",
     "lint": "cd web && npm run lint",
+    "provision": "node scripts/provision.mjs --fix",
+    "provision:check": "node scripts/provision.mjs",
+    "smoke:prod": "node scripts/smoke-check.mjs",
     "test": "npm run test:server",
     "test:server": "npm test --prefix server",
     "deploy": "scripts/deploy.sh production",
-    "deploy:staging": "scripts/deploy.sh staging"
+    "deploy:staging": "scripts/deploy.sh staging",
+    "prepare": "node -e \"process.env.CI ? process.exit(0) : require(\"child_process\").execSync(\"husky\")\""
   },
-  "dependencies": {},
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
-    "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "20.0.0",
-    "@react-native-com
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{js,ts,tsx,json,md}": [
+      "prettier --write --ignore-unknown"
+    ]
+  }
+}

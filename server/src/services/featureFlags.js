@@ -33,9 +33,9 @@ class FeatureFlagsService {
         rolloutPercent: 100,
       },
       TEAM_FEATURES: {
-        enabled: false,
+        enabled: true,
         description: 'Team accounts and shared features',
-        rolloutPercent: 0,
+        rolloutPercent: 100,
       },
       VOICE_INTERFACE: {
         enabled: false,

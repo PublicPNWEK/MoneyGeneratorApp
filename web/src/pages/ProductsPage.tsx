@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { ErrorState } from '../components/ErrorState';
+import './ProductsPage.css';
 
 export const ProductsPage: React.FC = () => {
-  const { products, openCheckout, connectBank } = useAppContext();
+  const { products: contextProducts, openCheckout, connectBank, apiConnected } = useAppContext();
+  const [products, setProducts] = useState(contextProducts);
+
+  useEffect(() => {
+    setProducts(contextProducts || []);
+  }, [contextProducts]);
+
+  if (!apiConnected && products.length === 0) {
+    return (
+      <div className="products-page">
+        <ErrorState
+          type="server"
+          title="Products unavailable"
+          message="We couldn't load live catalog data right now. Retry after the API is available."
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="products-page">
-      <div className="card elevated" style={{ textAlign: 'center', padding: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
-        <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, marginBottom: 'var(--space-2)' }}>Maximize Your Earnings</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>Choose the plan that works best for your gig economy needs</p>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <div className="products-banner">
+        <h2>Maximize Your Earnings</h2>
+        <p>Choose the plan that works best for your gig economy needs</p>
+        <div className="products-actions">
           <button className="button primary" onClick={openCheckout}>
             View Plans
           </button>
@@ -19,18 +39,21 @@ export const ProductsPage: React.FC = () => {
         </div>
       </div>
 
-      <section style={{ marginBottom: 'var(--space-6)' }}>
-        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>Featured Products</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-4)' }}>
-          {products.map((product) => (
-            <div key={product.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 'var(--space-3)' }}>
-                <span className="badge bg-emerald-100 text-emerald-700">{product.type}</span>
+      <div className="featured-section">
+        <h3 className="featured-title">Featured Products</h3>
+        <div className="products-grid">
+          {products.map((product: any) => (
+            <div key={product.id} className="product-card">
+              <div className="product-badge-wrapper">
+                <span className={`badge ${product.type === 'plan' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                  {product.type}
+                </span>
               </div>
-              <h3 style={{ fontSize: 'var(--text-xl)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>{product.name}</h3>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', flex: 1 }}>{product.description}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-emerald-600)' }}>{product.price}</span>
+              <h3 className="product-title">{product.name}</h3>
+              <p className="product-description">{product.description}</p>
+              
+              <div className="product-footer">
+                <span className="product-price">{product.price}</span>
                 <button className="button primary" onClick={openCheckout}>
                   Select
                 </button>
@@ -38,7 +61,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 };

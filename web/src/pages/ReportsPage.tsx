@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -10,23 +10,41 @@ import {
   Activity,
   Clock,
   Target,
+  Loader2,
+  Trash2,
+  Plus,
 } from 'lucide-react';
-import {
-  Line,
-  BarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-  AreaChart,
-} from 'recharts';
 import './ReportsPage.css';
+import { apiFetchBlob, apiFetchJson, apiFetchText, getUserId } from '../lib/apiClient';
+import { ErrorState, SkeletonMetricCard, SkeletonChart } from '../components';
+
+const ReportsCharts = lazy(() => import('../components/ReportsCharts'));
+
+// Scheduled report interface
+interface ScheduledReport {
+  id: string;
+  name: string;
+  reportType: string;
+  frequency: string;
+  format: string;
+  recipients: string[];
+  isActive: boolean;
+  lastRun: string | null;
+  nextRun: string;
+  createdAt: string;
+}
+
+interface ReportTypeOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface FrequencyOption {
+  id: string;
+  name: string;
+  description: string;
+}
 
 interface DateRange {
   start: Date;
@@ -34,14 +52,14 @@ interface DateRange {
   label: string;
 }
 
-interface EarningsData {
+interface ReportsChartEarningsPoint {
   date: string;
   earnings: number;
   expenses: number;
   net: number;
 }
 
-interface PlatformData {
+interface ReportsChartPlatformPoint {
   name: string;
   value: number;
   color: string;
@@ -65,110 +83,325 @@ const DATE_RANGES: DateRange[] = [
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 const ReportsPage: React.FC = () => {
   const [selectedRange, setSelectedRange] = useState<DateRange>(DATE_RANGES[1]);
   const [loading, setLoading] = useState(true);
-  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
-  const [platformData, setPlatformData] = useState<PlatformData[]>([]);
-  const [metrics, setMetrics] = useState<MetricCard[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [earningsData, setEarningsData] = useState<ReportsChartEarningsPoint[]>([]);
+  const [platformData, setPlatformData] = useState<ReportsChartPlatformPoint[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const userId = getUserId();
 
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce fetchReportData to avoid rapid re-renders
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    fetchReportData();
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(() => {
+      fetchReportData();
+    }, 200);
+    return () => {
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRange]);
 
-  const fetchReportData = async () => {
-    setLoading(true);
-    try {
-      // Simulated data - replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate mock earnings data
-      const days = Math.ceil((selectedRange.end.getTime() - selectedRange.start.getTime()) / (24 * 60 * 60 * 1000));
-      const mockEarnings: EarningsData[] = [];
-      
-      for (let i = 0; i < Math.min(days, 30); i++) {
-        const date = new Date(selectedRange.end.getTime() - i * 24 * 60 * 60 * 1000);
-        mockEarnings.unshift({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          earnings: Math.floor(Math.random() * 200 + 100),
-          expenses: Math.floor(Math.random() * 50 + 20),
-          net: 0,
-        });
+  // Auto-refresh effect
+  useEffect(() => {
+    if (autoRefresh) {
+      autoRefreshIntervalRef.current = setInterval(() => {
+        handleRefresh();
+      }, AUTO_REFRESH_INTERVAL);
+    }
+    return () => {
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
       }
-      mockEarnings.forEach(d => d.net = d.earnings - d.expenses);
-      setEarningsData(mockEarnings);
+    };
+  }, [autoRefresh]);
 
-      // Platform breakdown
-      setPlatformData([
-        { name: 'Uber', value: 45, color: COLORS[0] },
-        { name: 'DoorDash', value: 30, color: COLORS[1] },
-        { name: 'Instacart', value: 15, color: COLORS[2] },
-        { name: 'Other', value: 10, color: COLORS[3] },
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const startDate = selectedRange.start.toISOString().slice(0, 10);
+      const endDate = selectedRange.end.toISOString().slice(0, 10);
+
+      const [, incomeTrends, expenseTrends, incomeBreakdown] = await Promise.all([
+        apiFetchJson<any>('/api/v2/reporting/dashboard'),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=income`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=expense`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/breakdown?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&type=income`
+        ),
       ]);
 
-      // Metrics
-      const totalEarnings = mockEarnings.reduce((sum, d) => sum + d.earnings, 0);
-      const totalExpenses = mockEarnings.reduce((sum, d) => sum + d.expenses, 0);
-      const avgDaily = totalEarnings / mockEarnings.length;
-      const hoursWorked = mockEarnings.length * 6.5;
+      const incomeByDate = new Map<string, number>();
+      (incomeTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) incomeByDate.set(key, Number(d.amount) || 0);
+      });
+      const expenseByDate = new Map<string, number>();
+      (expenseTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) expenseByDate.set(key, Number(d.amount) || 0);
+      });
 
-      setMetrics([
-        {
-          label: 'Total Earnings',
-          value: `$${totalEarnings.toLocaleString()}`,
-          change: 12.5,
-          icon: <DollarSign size={20} />,
-          trend: 'up',
-        },
-        {
-          label: 'Net Profit',
-          value: `$${(totalEarnings - totalExpenses).toLocaleString()}`,
-          change: 8.3,
-          icon: <TrendingUp size={20} />,
-          trend: 'up',
-        },
-        {
-          label: 'Avg Daily',
-          value: `$${avgDaily.toFixed(0)}`,
-          change: -2.1,
-          icon: <Activity size={20} />,
-          trend: 'down',
-        },
-        {
-          label: 'Hours Worked',
-          value: `${hoursWorked.toFixed(0)}h`,
-          change: 5.0,
-          icon: <Clock size={20} />,
-          trend: 'up',
-        },
+      const allDates = new Set<string>([...incomeByDate.keys(), ...expenseByDate.keys()]);
+      const mergedSeries = [...allDates]
+        .sort((a, b) => a.localeCompare(b))
+        .map((date) => {
+          const earnings = incomeByDate.get(date) || 0;
+          const expenses = expenseByDate.get(date) || 0;
+          return { date, earnings, expenses, net: earnings - expenses };
+        });
+      setEarningsData(mergedSeries);
+
+      const breakdown = (incomeBreakdown?.data || []) as Array<any>;
+      const platforms = breakdown.map((row: any, i: number) => ({
+        name: row.category || `Category ${i + 1}`,
+        value: Number(row.percentage) || 0,
+        color: COLORS[i % COLORS.length],
+      }));
+      setPlatformData(platforms);
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh analytics');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [selectedRange]);
+
+  const fetchReportData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const startDate = selectedRange.start.toISOString().slice(0, 10);
+      const endDate = selectedRange.end.toISOString().slice(0, 10);
+
+      const [dashboard, incomeTrends, expenseTrends, incomeBreakdown] = await Promise.all([
+        apiFetchJson<any>('/api/v2/reporting/dashboard'),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=income`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/trends?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&period=daily&type=expense`
+        ),
+        apiFetchJson<any>(
+          `/api/v2/reporting/breakdown?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&type=income`
+        ),
       ]);
 
-    } catch (error) {
-      console.error('Failed to fetch report data:', error);
+      const incomeByDate = new Map<string, number>();
+      (incomeTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) incomeByDate.set(key, Number(d.amount) || 0);
+      });
+      const expenseByDate = new Map<string, number>();
+      (expenseTrends?.data || []).forEach((d: any) => {
+        const key = String(d.date || '').slice(0, 10);
+        if (key) expenseByDate.set(key, Number(d.amount) || 0);
+      });
+
+      const allDates = new Set<string>([...incomeByDate.keys(), ...expenseByDate.keys()]);
+      const mergedSeries = [...allDates]
+        .sort((a, b) => a.localeCompare(b))
+        .map((date) => {
+          const earnings = incomeByDate.get(date) || 0;
+          const expenses = expenseByDate.get(date) || 0;
+          return { date, earnings, expenses, net: earnings - expenses };
+        });
+      setEarningsData(mergedSeries);
+
+      const breakdown = (incomeBreakdown?.data || []) as Array<any>;
+      const platforms = breakdown.map((row: any, i: number) => ({
+        name: row.category || `Category ${i + 1}`,
+        value: Number(row.percentage) || 0,
+        color: COLORS[i % COLORS.length],
+      }));
+      setPlatformData(platforms);
+      setLastUpdated(new Date());
+
+      // Use dashboard metrics as a sanity check; if it returns no success, keep going with chart data
+      if (dashboard?.success === false) {
+        throw new Error(dashboard?.error || 'Failed to load reporting dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRange, userId]);
 
-  const handleExport = (format: 'csv' | 'pdf') => {
-    // TODO: Implement export functionality
-    console.log(`Exporting as ${format}...`);
-  };
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    const startDate = selectedRange.start.toISOString().slice(0, 10);
+    const endDate = selectedRange.end.toISOString().slice(0, 10);
 
-  const renderCustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip">
-          <p className="tooltip-label">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
-              {entry.name}: ${entry.value}
-            </p>
-          ))}
-        </div>
-      );
+    try {
+      if (format === 'csv') {
+        const csv = await apiFetchText(
+          `/api/v2/reporting/export-csv?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&type=all`
+        );
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `moneygen-report-${startDate}-to-${endDate}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const pdf = await apiFetchBlob(
+          `/api/v2/reporting/export-pdf?reportType=summary&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+        );
+        const url = URL.createObjectURL(pdf);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `moneygen-report-${startDate}-to-${endDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Export failed');
     }
-    return null;
+  };
+
+  // Memoize metrics for performance
+  const metrics = useMemo<MetricCard[]>(() => {
+    if (!earningsData.length) return [];
+    const totalEarnings = earningsData.reduce((sum, d) => sum + d.earnings, 0);
+    const totalExpenses = earningsData.reduce((sum, d) => sum + d.expenses, 0);
+    const avgDaily = totalEarnings / earningsData.length;
+    const hoursWorked = earningsData.length * 6.5;
+    return [
+      {
+        label: 'Total Earnings',
+        value: `$${totalEarnings.toLocaleString()}`,
+        change: 12.5,
+        icon: <DollarSign size={20} />,
+        trend: 'up',
+      },
+      {
+        label: 'Net Profit',
+        value: `$${(totalEarnings - totalExpenses).toLocaleString()}`,
+        change: 8.3,
+        icon: <TrendingUp size={20} />,
+        trend: 'up',
+      },
+      {
+        label: 'Avg Daily',
+        value: `$${avgDaily.toFixed(0)}`,
+        change: -2.1,
+        icon: <Activity size={20} />,
+        trend: 'down',
+      },
+      {
+        label: 'Hours Worked',
+        value: `${hoursWorked.toFixed(0)}h`,
+        change: 5.0,
+        icon: <Clock size={20} />,
+        trend: 'up',
+      },
+    ];
+  }, [earningsData]);
+
+  // ==================== SCHEDULED REPORTS ====================
+  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportTypeOption[]>([]);
+  const [frequencies, setFrequencies] = useState<FrequencyOption[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [newScheduledReport, setNewScheduledReport] = useState({
+    name: '',
+    reportType: '',
+    frequency: 'weekly',
+    format: 'pdf',
+    recipients: '',
+  });
+
+  // Fetch scheduled reports
+  useEffect(() => {
+    const fetchScheduledReports = async () => {
+      try {
+        const [reportsRes, typesRes, freqRes] = await Promise.all([
+          apiFetchJson<{ reports: ScheduledReport[] }>('/api/v2/reporting/scheduled'),
+          apiFetchJson<{ types: ReportTypeOption[] }>('/api/v2/reporting/scheduled/types'),
+          apiFetchJson<{ frequencies: FrequencyOption[] }>('/api/v2/reporting/scheduled/frequencies'),
+        ]);
+        setScheduledReports(reportsRes?.reports || []);
+        setReportTypes(typesRes?.types || []);
+        setFrequencies(freqRes?.frequencies || []);
+      } catch (err) {
+        console.error('Failed to fetch scheduled reports:', err);
+      }
+    };
+    fetchScheduledReports();
+  }, []);
+
+  const createScheduledReport = async () => {
+    if (!newScheduledReport.name || !newScheduledReport.reportType) return;
+    try {
+      const res = await apiFetchJson<{ report: ScheduledReport }>('/api/v2/reporting/scheduled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newScheduledReport,
+          recipients: newScheduledReport.recipients.split(',').map(e => e.trim()).filter(Boolean),
+        }),
+      });
+      if (res?.report) {
+        setScheduledReports([res.report, ...scheduledReports]);
+        setShowScheduleForm(false);
+        setNewScheduledReport({ name: '', reportType: '', frequency: 'weekly', format: 'pdf', recipients: '' });
+      }
+    } catch (err) {
+      console.error('Failed to create scheduled report:', err);
+    }
+  };
+
+  const toggleScheduledReport = async (reportId: string) => {
+    try {
+      const res = await apiFetchJson<{ report: ScheduledReport }>(`/api/v2/reporting/scheduled/${reportId}/toggle`, {
+        method: 'POST',
+      });
+      if (res?.report) {
+        setScheduledReports(scheduledReports.map(r => r.id === reportId ? res.report : r));
+      }
+    } catch (err) {
+      console.error('Failed to toggle scheduled report:', err);
+    }
+  };
+
+  const runScheduledReport = async (reportId: string) => {
+    try {
+      await apiFetchJson(`/api/v2/reporting/scheduled/${reportId}/run`, {
+        method: 'POST',
+      });
+      // Refresh the list to get updated lastRun/nextRun
+      const res = await apiFetchJson<{ reports: ScheduledReport[] }>('/api/v2/reporting/scheduled');
+      setScheduledReports(res?.reports || []);
+    } catch (err) {
+      console.error('Failed to run scheduled report:', err);
+    }
+  };
+
+  const deleteScheduledReport = async (reportId: string) => {
+    try {
+      await apiFetchJson(`/api/v2/reporting/scheduled/${reportId}`, {
+        method: 'DELETE',
+      });
+      setScheduledReports(scheduledReports.filter(r => r.id !== reportId));
+    } catch (err) {
+      console.error('Failed to delete scheduled report:', err);
+    }
   };
 
   return (
@@ -178,12 +411,19 @@ const ReportsPage: React.FC = () => {
         <div className="header-title">
           <BarChart3 size={28} />
           <h1>Reports & Analytics</h1>
+          {lastUpdated && (
+            <span className="last-updated">
+              <Clock size={12} />
+              Updated {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
         </div>
-        
         <div className="header-actions">
           <div className="date-selector">
             <Calendar size={16} />
+            <label htmlFor="date-range-select" className="visually-hidden">Date Range</label>
             <select
+              id="date-range-select"
               value={DATE_RANGES.findIndex(r => r.label === selectedRange.label)}
               onChange={(e) => setSelectedRange(DATE_RANGES[parseInt(e.target.value)])}
             >
@@ -194,12 +434,26 @@ const ReportsPage: React.FC = () => {
               ))}
             </select>
           </div>
-          
-          <button className="action-btn" onClick={() => fetchReportData()}>
-            <RefreshCw size={16} />
-            Refresh
+          <label className="auto-refresh-toggle">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            <span>Auto-refresh</span>
+          </label>
+          <button 
+            className={`action-btn ${isRefreshing ? 'refreshing' : ''}`} 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <Loader2 size={16} className="spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-          
           <div className="export-dropdown">
             <button className="action-btn primary">
               <Download size={16} />
@@ -212,12 +466,37 @@ const ReportsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Loading State */}
+      {/* Error State */}
+      {error && (
+        <ErrorState
+          type={error.includes('connect') || error.includes('network') ? 'network' : 'server'}
+          message={error}
+          onRetry={handleRefresh}
+          isRetrying={isRefreshing}
+          size="sm"
+        />
+      )}
+      {/* Loading State with Skeletons */}
       {loading ? (
-        <div className="loading-state">
-          <RefreshCw className="spin" size={32} />
-          <p>Loading report data...</p>
+        <div className="reports-skeleton">
+          {/* Metrics skeleton */}
+          <div className="metrics-grid">
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonMetricCard key={i} />
+            ))}
+          </div>
+          {/* Charts skeleton */}
+          <div className="charts-grid">
+            <div className="chart-card full-width">
+              <SkeletonChart height={300} />
+            </div>
+            <div className="chart-card">
+              <SkeletonChart height={250} showLegend={false} />
+            </div>
+            <div className="chart-card">
+              <SkeletonChart height={250} showLegend={false} />
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -237,129 +516,21 @@ const ReportsPage: React.FC = () => {
               </div>
             ))}
           </div>
-
-          {/* Charts Section */}
-          <div className="charts-grid">
-            {/* Earnings Over Time */}
-            <div className="chart-card full-width">
-              <div className="chart-header">
-                <h3>Earnings Over Time</h3>
-                <div className="chart-legend">
-                  <span className="legend-item earnings">
-                    <span className="dot"></span> Earnings
-                  </span>
-                  <span className="legend-item expenses">
-                    <span className="dot"></span> Expenses
-                  </span>
-                  <span className="legend-item net">
-                    <span className="dot"></span> Net Profit
-                  </span>
-                </div>
+          <Suspense fallback={
+            <div className="charts-grid">
+              <div className="chart-card full-width">
+                <SkeletonChart height={300} />
               </div>
-              <div className="chart-body">
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={earningsData}>
-                    <defs>
-                      <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip content={renderCustomTooltip} />
-                    <Area
-                      type="monotone"
-                      dataKey="earnings"
-                      stroke="#3b82f6"
-                      fillOpacity={1}
-                      fill="url(#colorEarnings)"
-                      strokeWidth={2}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="net"
-                      stroke="#10b981"
-                      fillOpacity={1}
-                      fill="url(#colorNet)"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="expenses"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="chart-card">
+                <SkeletonChart height={250} showLegend={false} />
+              </div>
+              <div className="chart-card">
+                <SkeletonChart height={250} showLegend={false} />
               </div>
             </div>
-
-            {/* Platform Breakdown */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <h3>Platform Breakdown</h3>
-              </div>
-              <div className="chart-body pie-chart">
-                <ResponsiveContainer width="100%" height={250}>
-                  <RechartsPieChart>
-                    <Pie
-                      data={platformData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {platformData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-                <div className="pie-legend">
-                  {platformData.map((platform, index) => (
-                    <div key={index} className="pie-legend-item">
-                      <span className="dot" style={{ background: platform.color }}></span>
-                      <span className="name">{platform.name}</span>
-                      <span className="value">{platform.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly Comparison */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <h3>Weekly Comparison</h3>
-              </div>
-              <div className="chart-body">
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={earningsData.slice(-7)}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip content={renderCustomTooltip} />
-                    <Bar dataKey="earnings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
+          }>
+            <ReportsCharts earningsData={earningsData} platformData={platformData} />
+          </Suspense>
           {/* Insights Section */}
           <div className="insights-section">
             <h3>
@@ -395,6 +566,166 @@ const ReportsPage: React.FC = () => {
                   <p>Lunch hours (11am-1pm) show highest demand. Consider scheduling accordingly.</p>
                 </div>
               </div>
+            </div>
+          </div>
+          {/* Scheduled Reports Section */}
+          <div className="scheduled-reports-section">
+            <div className="scheduled-reports-header">
+              <h3>Scheduled Reports</h3>
+              <button 
+                className="action-btn primary"
+                onClick={() => setShowScheduleForm(!showScheduleForm)}
+              >
+                <Plus size={16} />
+                {showScheduleForm ? 'Cancel' : 'New Schedule'}
+              </button>
+            </div>
+
+            {showScheduleForm && (
+              <div className="schedule-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="schedule-name">Report Name</label>
+                    <input
+                      id="schedule-name"
+                      type="text"
+                      placeholder="Weekly Earnings Summary"
+                      value={newScheduledReport.name}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="schedule-type">Report Type</label>
+                    <select
+                      id="schedule-type"
+                      value={newScheduledReport.reportType}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, reportType: e.target.value })}
+                    >
+                      <option value="">Select type...</option>
+                      {reportTypes.map(type => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="schedule-frequency">Frequency</label>
+                    <select
+                      id="schedule-frequency"
+                      value={newScheduledReport.frequency}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, frequency: e.target.value })}
+                    >
+                      {frequencies.map(freq => (
+                        <option key={freq.id} value={freq.id}>{freq.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="schedule-format">Format</label>
+                    <select
+                      id="schedule-format"
+                      value={newScheduledReport.format}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, format: e.target.value })}
+                    >
+                      <option value="pdf">PDF</option>
+                      <option value="csv">CSV</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label htmlFor="schedule-recipients">Recipients (comma-separated emails)</label>
+                    <input
+                      id="schedule-recipients"
+                      type="text"
+                      placeholder="email@example.com, another@example.com"
+                      value={newScheduledReport.recipients}
+                      onChange={(e) => setNewScheduledReport({ ...newScheduledReport, recipients: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button 
+                    className="action-btn primary"
+                    onClick={createScheduledReport}
+                    disabled={!newScheduledReport.name || !newScheduledReport.reportType}
+                  >
+                    Create Schedule
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="scheduled-reports-list">
+              {scheduledReports.length === 0 ? (
+                <div className="empty-state">
+                  <Calendar size={48} />
+                  <p>No scheduled reports yet. Create one to get automated reports delivered to your inbox.</p>
+                </div>
+              ) : (
+                scheduledReports.map(report => (
+                  <div key={report.id} className={`scheduled-report-card ${report.isActive ? 'active' : 'inactive'}`}>
+                    <div className="report-info">
+                      <div className="report-header">
+                        <h4>{report.name}</h4>
+                        <span className={`status-badge ${report.isActive ? 'active' : 'paused'}`}>
+                          {report.isActive ? 'Active' : 'Paused'}
+                        </span>
+                      </div>
+                      <p className="report-type">
+                        {reportTypes.find(t => t.id === report.reportType)?.name || report.reportType}
+                      </p>
+                      <div className="report-meta">
+                        <span>
+                          <Clock size={14} />
+                          {frequencies.find(f => f.id === report.frequency)?.name || report.frequency}
+                        </span>
+                        <span>
+                          <Download size={14} />
+                          {report.format.toUpperCase()}
+                        </span>
+                        {report.lastRun && (
+                          <span>
+                            Last: {new Date(report.lastRun).toLocaleDateString()}
+                          </span>
+                        )}
+                        {report.nextRun && report.isActive && (
+                          <span>
+                            Next: {new Date(report.nextRun).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="report-actions">
+                      <button 
+                        className="icon-btn"
+                        onClick={() => runScheduledReport(report.id)}
+                        title="Run now"
+                        aria-label="Run report now"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                      <button 
+                        className="icon-btn"
+                        onClick={() => toggleScheduledReport(report.id)}
+                        title={report.isActive ? 'Pause' : 'Resume'}
+                        aria-label={report.isActive ? 'Pause report' : 'Resume report'}
+                      >
+                        {report.isActive ? '⏸' : '▶'}
+                      </button>
+                      <button 
+                        className="icon-btn danger"
+                        onClick={() => deleteScheduledReport(report.id)}
+                        title="Delete"
+                        aria-label="Delete report"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>

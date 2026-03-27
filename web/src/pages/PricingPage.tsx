@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Zap, Crown, Building2, CreditCard, Calendar, Shield, ArrowRight } from 'lucide-react';
+import { Check, Zap, Crown, Building2, CreditCard, Calendar, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { useToast } from '../components/Toast';
+import { apiFetchJson, getUserId } from '../lib/apiClient';
 import './PricingPage.css';
 
 interface Plan {
@@ -117,7 +119,12 @@ const ADDONS: Addon[] = [
 const PricingPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
-  const { openCheckout, userProfile } = useAppContext();
+  const { openCheckout, userProfile, upgradeSubscription, cancelSubscription } = useAppContext();
+  const { showToast } = useToast();
+  const [billingAction, setBillingAction] = useState<null | 'cancel' | 'downgrade' | 'portal'>(null);
+
+  const currentPlanId = userProfile?.subscription ?? 'plan_free';
+  const currentPlanName = PLANS.find((p) => p.id === currentPlanId)?.name || 'Free';
 
   const annualSavings = Math.round(((14.99 * 12 - 119.88) / (14.99 * 12)) * 100);
 
@@ -138,12 +145,54 @@ const PricingPage: React.FC = () => {
     );
   };
 
-  const handleSelectPlan = (_planId: string) => {
+  const handleSelectPlan = (planId: string) => {
+    if (isCurrentPlan(planId)) return;
     openCheckout();
   };
 
+  const handleOpenBillingPortal = async () => {
+    if (billingAction) return;
+    setBillingAction('portal');
+    
+    try {
+      const userId = getUserId();
+      const data = await apiFetchJson<{ success: boolean; portalUrl?: string; error?: string }>(
+        `/api/v2/subscriptions/billing-portal?userId=${encodeURIComponent(userId)}`
+      );
+      
+      if (data?.portalUrl) {
+        // Open billing portal in new tab
+        window.open(data.portalUrl, '_blank', 'noopener,noreferrer');
+        showToast('Opening billing portal...', 'success');
+      } else {
+        showToast(data?.error || 'Unable to open billing portal', 'error');
+      }
+    } catch (error) {
+      console.error('Billing portal error:', error);
+      showToast('Failed to open billing portal. Please try again.', 'error');
+    } finally {
+      setBillingAction(null);
+    }
+  };
+
+  const handleCancelPlan = () => {
+    if (billingAction) return;
+    setBillingAction('cancel');
+    cancelSubscription()
+      .catch(() => showToast('Cancel failed. Please retry.', 'error'))
+      .finally(() => setBillingAction(null));
+  };
+
+  const handleDowngradePlan = () => {
+    if (billingAction) return;
+    setBillingAction('downgrade');
+    upgradeSubscription('plan_free', [], { billingCycle: 'monthly' })
+      .catch(() => showToast('Downgrade failed. Please retry.', 'error'))
+      .finally(() => setBillingAction(null));
+  };
+
   const isCurrentPlan = (planId: string) => {
-    return userProfile?.subscription === planId;
+    return currentPlanId === planId;
   };
 
   return (
@@ -153,7 +202,35 @@ const PricingPage: React.FC = () => {
         <div className="hero-content">
           <h1>Simple, Transparent Pricing</h1>
           <p>Choose the plan that fits your gig economy lifestyle. All plans include a 14-day free trial.</p>
-          
+          {/* Current Plan Status */}
+          <div className="current-plan-status">
+            <strong>Current Plan:</strong> {currentPlanName}
+            {currentPlanId !== 'plan_free' && (
+              <div className="current-plan-actions">
+                <button 
+                  className="btn-primary-outline" 
+                  onClick={handleOpenBillingPortal} 
+                  disabled={billingAction === 'portal'}
+                >
+                  {billingAction === 'portal' ? (
+                    <>
+                      <Loader2 size={14} className="spinning" /> Opening...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink size={14} /> Manage Billing
+                    </>
+                  )}
+                </button>
+                <button className="btn-secondary" onClick={handleCancelPlan} disabled={billingAction === 'cancel'}>
+                  {billingAction === 'cancel' ? 'Cancelling…' : 'Cancel'}
+                </button>
+                <button className="btn-secondary" onClick={handleDowngradePlan} disabled={billingAction === 'downgrade'}>
+                  {billingAction === 'downgrade' ? 'Downgrading…' : 'Downgrade to Free'}
+                </button>
+              </div>
+            )}
+          </div>
           {/* Billing Toggle */}
           <div className="billing-toggle">
             <button
@@ -184,13 +261,11 @@ const PricingPage: React.FC = () => {
               {plan.highlight && (
                 <div className="plan-highlight">{plan.highlight}</div>
               )}
-              
               <div className="plan-header">
                 <div className="plan-icon">{plan.icon}</div>
                 <h3 className="plan-name">{plan.name}</h3>
                 <p className="plan-description">{plan.description}</p>
               </div>
-
               <div className="plan-pricing">
                 <span className="price">{formatPrice(getPrice(plan))}</span>
                 {plan.monthlyPrice > 0 && (
@@ -202,7 +277,6 @@ const PricingPage: React.FC = () => {
                   </div>
                 )}
               </div>
-
               <ul className="plan-features">
                 {plan.features.map((feature, index) => (
                   <li key={index}>
@@ -211,7 +285,6 @@ const PricingPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
-
               <button
                 className={`plan-cta ${plan.popular ? 'primary' : 'secondary'}`}
                 onClick={() => handleSelectPlan(plan.id)}
@@ -220,6 +293,13 @@ const PricingPage: React.FC = () => {
                 {isCurrentPlan(plan.id) ? 'Current Plan' : plan.cta}
                 {!isCurrentPlan(plan.id) && <ArrowRight size={16} />}
               </button>
+              {/* Trial/Proration Info */}
+              {plan.id === 'plan_pro' && !isCurrentPlan(plan.id) && (
+                <div className="trial-info">14-day free trial. Cancel anytime.</div>
+              )}
+              {isCurrentPlan(plan.id) && plan.id !== 'plan_free' && (
+                <div className="proration-info">Prorated billing applies to plan changes.</div>
+              )}
             </div>
           ))}
         </div>

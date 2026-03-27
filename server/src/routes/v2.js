@@ -1,8 +1,16 @@
 import express from 'express';
 import { featureFlagsService } from '../services/featureFlags.js';
+import { GigPlatformService } from '../services/gigPlatforms.js';
 import referralsRouter from './v2/referrals.js';
 import subscriptionsRouter from './v2/subscriptions.js';
 import reportingRouter from './v2/reporting.js';
+import teamRouter from './v2/team.js';
+import integrationsRouter from './v2/integrations.js';
+import mileageRouter from './v2/mileage.js';
+import activityRouter from './v2/activity.js';
+import taxRouter from './v2/tax.js';
+import opsRouter from './v2/ops.js';
+import assetsRouter from './v2/assets.js';
 
 const router = express.Router();
 
@@ -10,6 +18,13 @@ const router = express.Router();
 router.use('/referrals', referralsRouter);
 router.use('/subscriptions', subscriptionsRouter);
 router.use('/reporting', reportingRouter);
+router.use('/team', teamRouter);
+router.use('/integrations', integrationsRouter);
+router.use('/mileage', mileageRouter);
+router.use('/activity', activityRouter);
+router.use('/tax', taxRouter);
+router.use('/ops', opsRouter);
+router.use('/assets', assetsRouter);
 
 /**
  * Feature Flags V2 Routes
@@ -151,51 +166,10 @@ router.get('/jobs/recommended', (req, res) => {
     return res.status(400).json({ error: 'userId query parameter required' });
   }
 
-  // Mock: Return personalized job recommendations
+  const recommendations = GigPlatformService.getRecommendedJobs({ userId });
   res.json({
     userId,
-    recommendations: [
-      {
-        id: 'job_001',
-        title: 'Package Delivery - Downtown Route',
-        platform: 'Amazon Flex',
-        category: 'delivery',
-        pay: { amount: 85, estimate: 'per 2 hours' },
-        distance: 2.3,
-        rating: 4.8,
-        matches: [
-          { type: 'skill', label: 'Delivery experience' },
-          { type: 'schedule', label: 'Morning availability' },
-          { type: 'earning', label: 'Your typical hourly rate' },
-        ],
-      },
-      {
-        id: 'job_002',
-        title: 'Rideshare Driver Needed',
-        platform: 'Uber',
-        category: 'rideshare',
-        pay: { amount: '$18-$25', estimate: 'per trip' },
-        distance: 1.1,
-        rating: 4.7,
-        matches: [
-          { type: 'schedule', label: 'Evening hours (your peak)' },
-          { type: 'earning', label: 'Surge pricing expected' },
-        ],
-      },
-      {
-        id: 'job_003',
-        title: 'Furniture Assembly Tasks',
-        platform: 'TaskRabbit',
-        category: 'tasks',
-        pay: { amount: '120', estimate: 'per 2 hours' },
-        distance: 5.2,
-        rating: 4.9,
-        matches: [
-          { type: 'skill', label: 'DIY skills' },
-          { type: 'earning', label: 'Premium hourly rate' },
-        ],
-      },
-    ],
+    recommendations,
     reason: 'Based on your work history, ratings, and availability',
   });
 });
@@ -209,11 +183,12 @@ router.post('/jobs/:jobId/save', (req, res) => {
     return res.status(400).json({ error: 'userId required' });
   }
 
-  res.json({
-    jobId,
-    saved: saved !== false,
-    savedAt: new Date().toISOString(),
-  });
+  try {
+    const result = GigPlatformService.saveJob({ userId, jobId, saved: saved !== false });
+    res.json(result);
+  } catch (error) {
+    res.status(404).json({ error: error.message || 'job_not_found' });
+  }
 });
 
 // Get saved jobs
@@ -224,24 +199,7 @@ router.get('/jobs/saved', (req, res) => {
     return res.status(400).json({ error: 'userId query parameter required' });
   }
 
-  res.json({
-    userId,
-    savedJobs: [
-      {
-        id: 'job_001',
-        title: 'Package Delivery - Downtown Route',
-        platform: 'Amazon Flex',
-        savedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'job_003',
-        title: 'Furniture Assembly Tasks',
-        platform: 'TaskRabbit',
-        savedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      },
-    ],
-    totalSaved: 2,
-  });
+  res.json({ userId, ...GigPlatformService.getSavedJobs({ userId }) });
 });
 
 // Create or update job alert
@@ -252,16 +210,11 @@ router.post('/jobs/alerts', (req, res) => {
     return res.status(400).json({ error: 'userId, name, and filters required' });
   }
 
-  const alertId = `alert_${Date.now()}`;
-
+  const alert = GigPlatformService.upsertJobAlert({ userId, name, filters, channels: channels || ['email', 'in-app'] });
   res.json({
-    alertId,
-    userId,
-    name,
-    filters,
-    channels: channels || ['email', 'in-app'],
-    isActive: true,
-    createdAt: new Date().toISOString(),
+    alertId: alert.id,
+    isActive: alert.isActive,
+    alert,
   });
 });
 
@@ -273,37 +226,7 @@ router.get('/jobs/alerts', (req, res) => {
     return res.status(400).json({ error: 'userId query parameter required' });
   }
 
-  res.json({
-    userId,
-    alerts: [
-      {
-        id: 'alert_001',
-        name: 'High-Pay Delivery Jobs',
-        filters: {
-          platform: ['Amazon Flex', 'Instacart'],
-          minPay: 80,
-          category: 'delivery',
-        },
-        channels: ['email', 'in-app', 'push'],
-        isActive: true,
-        createdAt: '2026-03-01T10:00:00Z',
-        recentMatches: 3,
-      },
-      {
-        id: 'alert_002',
-        name: 'Evening Rideshare',
-        filters: {
-          platform: ['Uber', 'Lyft'],
-          category: 'rideshare',
-          availability: 'evening',
-        },
-        channels: ['in-app'],
-        isActive: true,
-        createdAt: '2026-02-15T14:30:00Z',
-        recentMatches: 8,
-      },
-    ],
-  });
+  res.json({ userId, alerts: GigPlatformService.getJobAlerts({ userId }) });
 });
 
 /**

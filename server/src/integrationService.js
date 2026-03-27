@@ -32,6 +32,31 @@ function verifySignature(secret, body, signature, timestamp) {
   return matches;
 }
 
+function verifyTimestampedSignature(secret, body, signature, timestamp) {
+  if (!timestamp) return false;
+  const expected = signPayload(secret, `${timestamp}.${body}`);
+  const normalizedBody = safeNormalize(body);
+  const normalizedExpected = normalizedBody ? signPayload(secret, `${timestamp}.${normalizedBody}`) : expected;
+  const provided = signature || '';
+  return compare(expected, provided) || compare(normalizedExpected, provided);
+}
+
+function resolveWebhookArgs(timestampOrLog, logOrCorrelationId, maybeCorrelationId) {
+  if (typeof timestampOrLog === 'object' && timestampOrLog !== null) {
+    return {
+      timestamp: null,
+      log: timestampOrLog,
+      correlationId: logOrCorrelationId,
+    };
+  }
+
+  return {
+    timestamp: timestampOrLog || null,
+    log: logOrCorrelationId,
+    correlationId: maybeCorrelationId,
+  };
+}
+
 function compare(expected, provided) {
   if (!expected || expected.length !== provided.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));

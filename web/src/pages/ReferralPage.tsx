@@ -5,6 +5,7 @@ import ReferralCard from '../components/ReferralCard';
 import ReferralStats from '../components/ReferralStats';
 import ReferralLeaderboard from '../components/ReferralLeaderboard';
 import ShareButtons from '../components/ShareButtons';
+import { apiFetchJson } from '../lib/apiClient';
 
 interface ReferralData {
   code: string;
@@ -28,39 +29,60 @@ const ReferralPage: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReferralData();
-    fetchLeaderboard();
+    _fetchReferralData();
+    _fetchLeaderboard();
   }, []);
 
-  const fetchReferralData = async () => {
-    try {
-      const response = await fetch('/api/v2/referrals/me', {
-        headers: {
-          'x-user-id': localStorage.getItem('userId') || 'demo-user',
+  const normalizeReferralResponse = (data: any): ReferralData => {
+    // API can return either:
+    // - { success, referralCode, stats: { totalInvitesCreated, ... } }
+    // - { success, code, expiresAt, creditAmount } (new code created)
+    const code = data?.code || data?.referralCode || 'MONEYGEN2026';
+    const stats = data?.stats || {};
+    const shareStats = stats?.shareStats || {};
+
+    return {
+      code,
+      stats: {
+        totalInvites: Number(stats?.totalInvitesCreated ?? stats?.totalInvites ?? 0),
+        totalSignups: Number(stats?.totalSignups ?? 0),
+        conversionRate: Number(stats?.conversionRate ?? 0),
+        creditsEarned: Number(stats?.creditsEarned ?? 0),
+        shareStats: {
+          whatsapp: Number(shareStats?.whatsapp ?? 0),
+          twitter: Number(shareStats?.twitter ?? 0),
+          email: Number(shareStats?.email ?? 0),
+          sms: Number(shareStats?.sms ?? 0),
+          directLink: Number(shareStats?.directLink ?? 0),
         },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReferralData(data);
-      }
+      },
+    };
+  };
+
+  const _fetchReferralData = async () => {
+    try {
+      setLoadError(null);
+      const data = await apiFetchJson<any>('/api/v2/referrals/me');
+      setReferralData(normalizeReferralResponse(data));
     } catch (error) {
-      console.error('Failed to fetch referral data:', error);
+      console.warn('Failed to fetch referral data:', error);
+      setReferralData(null);
+      setLoadError('Unable to load referral program right now.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchLeaderboard = async () => {
+  const _fetchLeaderboard = async () => {
     try {
-      const response = await fetch('/api/v2/referrals/leaderboard?limit=10');
-      if (response.ok) {
-        const data = await response.json();
-        setLeaderboard(data.data || []);
-      }
+      const data = await apiFetchJson<{ success: boolean; data?: any[] }>('/api/v2/referrals/leaderboard?limit=10');
+      setLeaderboard(Array.isArray(data?.data) ? data.data : []);
     } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
+      console.warn('Failed to fetch leaderboard:', error);
+      setLeaderboard([]);
     }
   };
 
@@ -75,10 +97,9 @@ const ReferralPage: React.FC = () => {
   const handleTrackShare = async (channel: string) => {
     if (!referralData?.code) return;
     try {
-      await fetch('/api/v2/referrals/track-share', {
+      await apiFetchJson('/api/v2/referrals/track-share', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: referralData.code, channel }),
+        body: { code: referralData.code, channel },
       });
     } catch (error) {
       console.error('Failed to track share:', error);
@@ -87,6 +108,10 @@ const ReferralPage: React.FC = () => {
 
   if (loading) {
     return <div className="referral-loading">Loading referral program...</div>;
+  }
+
+  if (loadError && !referralData) {
+    return <div className="referral-loading">{loadError}</div>;
   }
 
   return (

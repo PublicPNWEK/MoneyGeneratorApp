@@ -3,223 +3,12 @@
  * Provides guided tours, tooltips, and progressive feature disclosure
  */
 
-import React, { useState, useContext, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { X, HelpCircle, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
 import '../components/OnboardingEducation.css';
+import { useOnboarding } from './onboardingContext';
 
-// Context for global onboarding state
-export interface OnboardingCheckpoint {
-  id: string;
-  label: string;
-  completed: boolean;
-  importance: 'critical' | 'important' | 'optional';
-  completedAt?: string;
-}
-
-export interface OnboardingUser {
-  role: 'freelancer' | 'business' | 'individual' | null;
-  checkpoints: OnboardingCheckpoint[];
-  tutorialsWatched: string[];
-  lastCheckpointTime?: string;
-}
-
-interface OnboardingContextType {
-  user: OnboardingUser;
-  updateCheckpoint: (id: string, completed: boolean) => void;
-  markTutorialWatched: (tutorialId: string) => void;
-  getCompletionPercentage: () => number;
-  getAllCheckpoints: () => OnboardingCheckpoint[];
-  getIncompleteCheckpoints: () => OnboardingCheckpoint[];
-}
-
-const OnboardingContext = React.createContext<OnboardingContextType | undefined>(undefined);
-
-export const useOnboarding = () => {
-  const context = useContext(OnboardingContext);
-  if (!context) {
-    throw new Error('useOnboarding must be used within OnboardingProvider');
-  }
-  return context;
-};
-
-// Default onboarding checkpoints by role
-const DEFAULT_CHECKPOINTS: Record<string, OnboardingCheckpoint[]> = {
-  freelancer: [
-    {
-      id: 'welcome',
-      label: 'Welcome & Setup',
-      completed: false,
-      importance: 'critical',
-    },
-    {
-      id: 'connect_bank',
-      label: 'Connect Your Bank',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'connect_platforms',
-      label: 'Connect Gig Platforms',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'set_goals',
-      label: 'Set Financial Goals',
-      completed: false,
-      importance: 'optional',
-    },
-    {
-      id: 'enable_automations',
-      label: 'Enable Automations',
-      completed: false,
-      importance: 'optional',
-    },
-    {
-      id: 'explore_dashboard',
-      label: 'Explore Dashboard',
-      completed: false,
-      importance: 'important',
-    },
-  ],
-  business: [
-    {
-      id: 'welcome',
-      label: 'Welcome & Setup',
-      completed: false,
-      importance: 'critical',
-    },
-    {
-      id: 'connect_bank',
-      label: 'Connect Business Bank Account',
-      completed: false,
-      importance: 'critical',
-    },
-    {
-      id: 'add_team_members',
-      label: 'Add Team Members',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'setup_bookkeeping',
-      label: 'Setup Automated Bookkeeping',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'configure_payroll',
-      label: 'Configure Payroll Settings',
-      completed: false,
-      importance: 'important',
-    },
-  ],
-  individual: [
-    {
-      id: 'welcome',
-      label: 'Welcome & Setup',
-      completed: false,
-      importance: 'critical',
-    },
-    {
-      id: 'connect_bank',
-      label: 'Connect Your Bank Account',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'manual_setup',
-      label: 'Add Income & Expense Categories',
-      completed: false,
-      importance: 'important',
-    },
-    {
-      id: 'set_savings_goals',
-      label: 'Set Savings Goals',
-      completed: false,
-      importance: 'optional',
-    },
-    {
-      id: 'explore_insights',
-      label: 'Explore Financial Insights',
-      completed: false,
-      importance: 'optional',
-    },
-  ],
-};
-
-// Provider component
-export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [user, setUser] = useState<OnboardingUser>(() => {
-    const stored = localStorage.getItem('onboarding_user');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return {
-      role: null,
-      checkpoints: [],
-      tutorialsWatched: [],
-    };
-  });
-
-  const saveUser = (updatedUser: OnboardingUser) => {
-    setUser(updatedUser);
-    localStorage.setItem('onboarding_user', JSON.stringify(updatedUser));
-  };
-
-  const updateCheckpoint = (id: string, completed: boolean) => {
-    setUser((prev) => {
-      const updated = { ...prev };
-      const checkpoint = updated.checkpoints.find((c) => c.id === id);
-      if (checkpoint) {
-        checkpoint.completed = completed;
-        checkpoint.completedAt = completed ? new Date().toISOString() : undefined;
-        updated.lastCheckpointTime = new Date().toISOString();
-      }
-      saveUser(updated);
-      return updated;
-    });
-  };
-
-  const markTutorialWatched = (tutorialId: string) => {
-    setUser((prev) => {
-      const updated = { ...prev };
-      if (!updated.tutorialsWatched.includes(tutorialId)) {
-        updated.tutorialsWatched.push(tutorialId);
-      }
-      saveUser(updated);
-      return updated;
-    });
-  };
-
-  const getCompletionPercentage = () => {
-    if (user.checkpoints.length === 0) return 0;
-    const completed = user.checkpoints.filter((c) => c.completed).length;
-    return Math.round((completed / user.checkpoints.length) * 100);
-  };
-
-  const getAllCheckpoints = () => user.checkpoints;
-
-  const getIncompleteCheckpoints = () =>
-    user.checkpoints.filter((c) => !c.completed);
-
-  return (
-    <OnboardingContext.Provider
-      value={{
-        user,
-        updateCheckpoint,
-        markTutorialWatched,
-        getCompletionPercentage,
-        getAllCheckpoints,
-        getIncompleteCheckpoints,
-      }}
-    >
-      {children}
-    </OnboardingContext.Provider>
-  );
-};
+export { DEFAULT_CHECKPOINTS, OnboardingProvider, useOnboarding } from './onboardingContext';
 
 // Guided Tour Component
 export interface TourStep {
@@ -254,6 +43,8 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
   showSkip = true,
 }) => {
   const [highlightElement, setHighlightElement] = useState<HTMLElement | null>(null);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
   const step = steps[currentStepIndex];
 
   useEffect(() => {
@@ -269,6 +60,25 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       setHighlightElement(null);
     }
   }, [isActive, currentStepIndex, step?.highlightSelector]);
+
+  useEffect(() => {
+    if (!highlightElement || !highlightRef.current) return;
+    const top = highlightElement.offsetTop - 8;
+    const left = highlightElement.offsetLeft - 8;
+    const width = highlightElement.offsetWidth + 16;
+    const height = highlightElement.offsetHeight + 16;
+
+    highlightRef.current.style.top = `${top}px`;
+    highlightRef.current.style.left = `${left}px`;
+    highlightRef.current.style.width = `${width}px`;
+    highlightRef.current.style.height = `${height}px`;
+  }, [highlightElement]);
+
+  useEffect(() => {
+    if (!progressFillRef.current) return;
+    const percent = ((currentStepIndex + 1) / steps.length) * 100;
+    progressFillRef.current.style.width = `${percent}%`;
+  }, [currentStepIndex, steps.length]);
 
   const handleNext = () => {
     if (currentStepIndex < steps.length - 1) {
@@ -300,12 +110,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       {highlightElement && (
         <div
           className="tour-highlight"
-          style={{
-            top: highlightElement.offsetTop - 8,
-            left: highlightElement.offsetLeft - 8,
-            width: highlightElement.offsetWidth + 16,
-            height: highlightElement.offsetHeight + 16,
-          }}
+          ref={highlightRef}
         />
       )}
 
@@ -342,10 +147,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
               {currentStepIndex + 1} of {steps.length}
             </span>
             <div className="tour-progress-bar">
-              <div
-                className="tour-progress-fill"
-                style={{ width: `${((currentStepIndex + 1) / steps.length) * 100}%` }}
-              />
+              <div className="tour-progress-fill" ref={progressFillRef} />
             </div>
           </div>
 
@@ -397,6 +199,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
   maxWidth = 250,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!tooltipRef.current) return;
+    tooltipRef.current.style.maxWidth = `${maxWidth}px`;
+  }, [maxWidth, isVisible]);
 
   const handleMouseEnter = () => trigger === 'hover' && setIsVisible(true);
   const handleMouseLeave = () => trigger === 'hover' && setIsVisible(false);
@@ -417,7 +225,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       {isVisible && (
         <div
           className={`tooltip tooltip-${position}`}
-          style={{ maxWidth }}
+          ref={tooltipRef}
           role="tooltip"
         >
           {content}
@@ -437,6 +245,12 @@ export const OnboardingChecklist: React.FC = () => {
 
   const checkpoints = getAllCheckpoints();
   const completionPercent = getCompletionPercentage();
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!progressFillRef.current) return;
+    progressFillRef.current.style.width = `${completionPercent}%`;
+  }, [completionPercent]);
 
   return (
     <div className="onboarding-checklist">
@@ -445,10 +259,7 @@ export const OnboardingChecklist: React.FC = () => {
         <div className="checklist-progress">
           <div className="progress-value">{completionPercent}%</div>
           <div className="progress-bar-full">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${completionPercent}%` }}
-            />
+            <div className="progress-bar-fill" ref={progressFillRef} />
           </div>
         </div>
       </div>
@@ -576,7 +387,7 @@ export const EducationalHint: React.FC<HintProps> = ({
   type = 'info',
 }) => {
   return (
-    <div className={`educational-hint hint-${type}`} role="notification">
+    <div className={`educational-hint hint-${type}`} role="status" aria-live="polite">
       {icon && <div className="hint-icon">{icon}</div>}
       <div className="hint-content">
         <h4 className="hint-title">{title}</h4>
@@ -695,4 +506,3 @@ export const useHelpWidget = () => {
   return { isOpen, toggleHelp, closeHelp, openHelp };
 };
 
-export { DEFAULT_CHECKPOINTS };

@@ -1,566 +1,243 @@
-# Money Generator App - Full-Stack Web Edition
+# Money Generator App
 
-**Full-Stack Web Application** | React 18 Frontend + Node.js/Express Backend  
-**Status:** Active Development | Deployed to Railway  
-**Latest:** v1.3.0 (March 12, 2026)
+React 18 frontend plus Node.js/Express backend for gig workers, freelancers, and operators to manage earnings, expenses, subscriptions, integrations, and storefront flows.
 
----
+Status: Active development  
+Latest release: v1.3.1 (March 16, 2026)
 
 ## Overview
 
-Money Generator App is a comprehensive financial SaaS platform helping users:
-- 💰 Track income from multiple sources (jobs, freelancing, gig work)
-- 📊 Manage expenses and budgets with AI-powered categorization
-- 🎯 Find and apply to income opportunities via job marketplace
-- 📈 Monitor financial health with advanced analytics
-- 👥 Grow earnings through referral program
+Money Generator App helps users:
 
-## Technology Stack
+- Track income, expenses, subscriptions, mileage, and financial health.
+- Browse jobs and switch into an on-demand map experience when needed.
+- Generate reports and manage tax-adjacent workflows.
+- Connect payment, payout, and banking integrations.
+- Publish storefront experiences for customer purchases.
+
+## Stack
 
 ### Frontend
-- **Framework:** React 18.2.0 with TypeScript 5.3
-- **Build Tool:** Vite 7.3.1 (Lightning-fast bundling)
-- **Styling:** CSS with dark mode & responsive design
-- **State:** Context API + React Hooks
-- **Routing:** React Router v7.13.1
-- **Charts:** Recharts 2.10.0
-- **Icons:** Lucide React 0.577.0
-- **PWA:** Vite PWA plugin with service workers
+
+- React 18 with TypeScript
+- Vite 7
+- React Router 7
+- Context-based state management
+- Lucide React icons
+- Custom SVG report previews
+- MapLibre GL for the Jobs map, loaded only when the user selects map view
 
 ### Backend
-- **Runtime:** Node.js 20+
-- **Framework:** Express.js 4.19.2
-- **Language:** JavaScript (ES Modules)
-- **Database:** Postgres (connection pooling ready)
-- **Authentication:** JWT tokens + securely hashed passwords
-- **Security:** Helmet, CORS, Rate limiting, Input validation (Zod)
-- **Caching:** Node-cache for performance
 
-### DevOps
-- **Containerization:** Docker
-- **Deployment:** Railway platform
-- **CI/CD:** Git-based automatic deployments
-- **Monitoring:** Error logging, performance metrics
+- Node.js 20+
+- Express.js (ESM)
+- PostgreSQL via `pg` with in-memory fallback support
+- Zod validation
+- JWT auth plus static operator tokens for ops routes
+- Stripe, Stripe Connect, Plaid, and PayPal integrations
 
----
+## Repository Layout
 
-## Project Structure
-
-```
+```text
 MoneyGeneratorApp/
-├── web/                              # React Frontend SPA
+├── web/                     React SPA
 │   ├── src/
-│   │   ├── components/               # Reusable React components
-│   │   │   ├── ReferralPage.tsx      # Referral system UI
-│   │   │   ├── PricingPage.tsx       # Subscription tiers
-│   │   │   ├── ReportsPage.tsx       # Analytics dashboard
-│   │   │   └── ShareButtons.tsx      # Share functionality
-│   │   ├── pages/                    # Route pages
-│   │   ├── hooks/                    # Custom React hooks
-│   │   ├── context/                  # Context providers
-│   │   ├── data/                     # Static/sample data
-│   │   ├── App.tsx                   # Root component
-│   │   └── main.tsx                  # Entry point
-│   ├── package.json                  # Web dependencies
-│   ├── vite.config.ts                # Bundler config
-│   ├── tsconfig.json                 # TypeScript config
-│   └── index.html                    # HTML template
-│
-├── server/                           # Express Backend API
+│   │   ├── components/      Reusable UI and flows
+│   │   ├── context/         App, auth, theme, and onboarding providers
+│   │   ├── data/            Static and mock data
+│   │   ├── layouts/         Authenticated layout shell
+│   │   ├── lib/             API client and helpers
+│   │   ├── pages/           Route pages
+│   │   ├── styles/          Active design system and shared CSS
+│   │   ├── App.tsx          Route composition and providers
+│   │   └── main.tsx         Entry point
+│   ├── package.json
+│   └── vite.config.ts       Bundle budgets and chunk strategy
+├── server/                  Express API
 │   ├── src/
-│   │   ├── app.js                    # Express app setup
-│   │   ├── index.js                  # Server entry point
-│   │   ├── routes/                   # API route handlers
-│   │   │   ├── referrals.js         # Referral endpoints
-│   │   │   ├── subscriptions.js     # Subscription endpoints
-│   │   │   ├── reports.js           # Analytics endpoints
-│   │   │   └── ...
-│   │   ├── services/                 # Business logic
-│   │   │   ├── referralService.js   # Referral logic
-│   │   │   ├── subscriptionService.js
-│   │   │   ├── reportingService.js
-│   │   │   └── ...
-│   │   ├── models/                   # Data models & schema
-│   │   ├── middleware/               # Express middleware
-│   │   ├── config.js                 # Configuration
-│   │   └── __tests__/                # Backend tests
-│   ├── package.json                  # Server dependencies
-│   ├── Dockerfile                    # Container config
-│   ├── railway.toml                  # Railway deployment config
-│   └── vercel.json                   # Alternative deployment
-│
-├── scripts/
-│   └── deploy.sh                     # Deployment script
-│
-├── .github/
-│   └── workflows/                    # GitHub Actions CI/CD
-│
-├── package.json                      # Root package (workspace)
-├── tsconfig.json                     # Root TypeScript config
-└── README.md                         # This file
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── models/
+│   │   └── __tests__/
+│   └── package.json
+├── scripts/                 Provisioning and smoke checks
+├── CHANGELOG.md
+├── PRODUCTION_OPERATIONS_RUNBOOK.md
+├── RELEASE_CHECKLIST.md
+├── POST_DEPLOYMENT_CHECKLIST.md
+├── RELEASE_NOTES_V1.3.1.md
+└── TESTING_GUIDE.md
 ```
 
----
-
-## Quick Start
+## Local Development
 
 ### Prerequisites
-- **Node.js** 20 or higher
-- **npm** or **yarn**
-- **Git**
 
-### Local Development
+- Node.js 20+
+- npm
 
-1. **Clone the repository**
-   ```bash
-   git clone <repo-url>
-   cd MoneyGeneratorApp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # This installs root package which coordinates web & server
-   ```
-
-3. **Install backend dependencies**
-   ```bash
-   npm install --prefix server
-   ```
-
-4. **Install frontend dependencies**
-   ```bash
-   npm install --prefix web
-   ```
-
-5. **Setup environment variables**
-   ```bash
-   # .env files needed in root and server/
-   # See documentation for required values
-   ```
-
-6. **Start development servers (in separate terminals)**
-   
-   ***Terminal 1 - Frontend (http://localhost:5173)***
-   ```bash
-   npm run dev
-   # Runs: cd web && npm run dev
-   ```
-
-   ***Terminal 2 - Backend (http://localhost:3000)***
-   ```bash
-   npm run dev --prefix server
-   # Runs: node src/index.js
-   ```
-
----
-
-## Available Commands
-
-### Root Package
+### Install
 
 ```bash
-npm run dev              # Start web dev server
-npm run build            # Build web for production
-npm run preview          # Preview production build locally
-npm run lint             # Lint web code
-npm run test             # Run backend tests
-npm run deploy           # Deploy to production
-npm run deploy:staging   # Deploy to staging
-```
-
-### Web Package (cd web)
-
-```bash
-npm run dev              # Start Vite dev server (http://localhost:5173)
-npm run build            # Build production bundle (dist/)
-npm run preview          # Preview dist/ locally
-npm run lint             # ESLint + TypeScript checks
-```
-
-### Server Package (cd server)
-
-```bash
-npm run dev              # Start Express server (http://localhost:3000)
-npm run start            # Start with NODE_ENV=production
-npm test                 # Run Jest tests
-```
-
----
-
-## API Documentation
-
-### Base URL
-**Development:** `http://localhost:3000/api/v2`  
-**Production:** `https://moneygenerator.app/api/v2`
-
-### Key Endpoints
-
-#### Referral System
-- `POST /referrals/generate` - Create referral code
-- `GET /referrals/{code}` - Get referral details
-- `POST /referrals/{code}/redeem` - Redeem referral bonus
-
-#### Subscriptions
-- `GET /subscriptions/plans` - Get available plans
-- `POST /subscriptions/upgrade` - Upgrade tier
-- `GET /subscriptions/{userId}` - Get user subscription
-- `POST /subscriptions/{userId}/cancel` - Cancel subscription
-
-#### Reports & Analytics
-- `GET /reports/dashboard` - User dashboard data
-- `GET /reports/income-summary` - Income breakdown
-- `GET /reports/expenses-summary` - Expense breakdown
-- `GET /reports/export` - Export data as CSV/JSON
-
-See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for complete spec.
-
----
-
-## Features Implemented
-
-### Phase 1: Core Platform ✅
-- [x] User authentication & profiles
-- [x] Income tracking (multiple sources)
-- [x] Expense management with categories
-- [x] Dashboard with KPIs
-- [x] Basic analytics & charts
-- [x] Mobile-responsive UI
-
-### Phase 2: Growth Features 🚀
-- [x] Referral system (code generation, tracking, bonus distribution)
-- [x] Subscription tier system (Free, Pro, Enterprise)
-- [x] Advanced reporting
-- [ ] Job marketplace integration
-- [ ] Notification system
-
-### Phase 3: Advanced Features 📋
-- [ ] Predictive analytics (ML forecasting)
-- [ ] Bank integration (Plaid)
-- [ ] OCR receipt scanning
-- [ ] Team collaboration
-- [ ] API for third-party apps
-
-See [ROADMAP.md](ROADMAP.md) for complete feature roadmap.
-
----
-
-## Deployment
-
-### Railway (Current)
-
-```bash
-npm run deploy
-# Automatically deploys to Railway
-# Frontend & Backend in same container
-```
-
-**Deployment URL:** [moneygenerator.app](https://moneygenerator.app)  
-**Status:** ✅ Live  
-**CI/CD:** Git push → Railway webhook → Auto-deploy
-
-### Environment Variables
-
-**Frontend (.env.local)**
-```
-VITE_API_BASE_URL=http://localhost:3000/api/v2
-VITE_APP_NAME=Money Generator App
-```
-
-**Backend (.env)**
-```
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=postgres://...
-JWT_SECRET=...
-STRIPE_API_KEY=...
-```
-
-See [WEB_DEPLOYMENT.md](WEB_DEPLOYMENT.md) for detailed instructions.
-
----
-
-## Testing
-
-### Backend Tests
-```bash
-npm run test:server
-# Runs Jest test suite in server/__tests__/
-```
-
-### Frontend Tests
-```bash
-cd web
-npm test  # Not yet configured - coming soon
-```
-
-### Coverage
-```bash
-npm run test:server -- --coverage
-```
-
----
-
-## Contributing
-
-1. Create feature branch: `git checkout -b feature/my-feature`
-2. Commit changes: `git commit -m "feat: add my feature"`
-3. Push to branch: `git push origin feature/my-feature`
-4. Open Pull Request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
-
-### Latest Version: v1.3.0 (March 12, 2026)
-- ✅ Removed Android, iOS, and Kotlin Multiplatform components
-- ✅ Focused on full-stack web deployment
-- ✅ Implemented referral system with ShareButtons
-- ✅ Added subscription tier management
-- ✅ Built analytics & reporting engine
-
----
-
-## Troubleshooting
-
-### Port Already in Use
-```bash
-# Find process on port 3000
-netstat -ano | findstr :3000  # Windows
-lsof -i :3000                  # macOS/Linux
-
-# Kill process
-taskkill /PID <PID> /F         # Windows
-kill -9 <PID>                  # macOS/Linux
-```
-
-### Build Failures
-```bash
-# Clean installation
-rm -rf node_modules
-rm -rf web/node_modules
-rm -rf server/node_modules
 npm install
 npm install --prefix web
 npm install --prefix server
 ```
 
-### API Connection Issues
-- Check backend is running: `http://localhost:3000/health`
-- Verify CORS settings in `server/src/config.js`
-- Check network tab in browser DevTools
+On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
-### Deployment Issues
-See [WEB_DEPLOYMENT.md](WEB_DEPLOYMENT.md#troubleshooting) for deployment-specific help.
+### Run
 
----
+Frontend from the repo root:
 
-## Security
-
-- ✅ HTTPS enforced in production
-- ✅ CORS properly configured
-- ✅ Rate limiting on API endpoints
-- ✅ Input validation with Zod
-- ✅ JWT token-based authentication
-- ✅ Password security with bcrypt
-- ✅ Helmet.js for HTTP headers
-
-See [SECURITY_NOTE.md](SECURITY_NOTE.md) for security policy.
-
----
-
-## Performance
-
-- **Frontend Build:** ~5.2 seconds (Vite)
-- **Bundle Size:** ~250KB JS, ~56KB CSS (production)
-- **Page Load:** < 2 seconds (with optimal network)
-- **API Response:** < 200ms (typical)
-- **Lighthouse Score:** 92+ (all metrics)
-
----
-
-## Support & Feedback
-
-- 📧 Email: support@moneygenerator.app
-- 🐛 Issues: [GitHub Issues](https://github.com/user/MoneyGeneratorApp/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/user/MoneyGeneratorApp/discussions)
-
----
-
-## License
-
-MIT License - See [LICENSE](LICENSE) for details
-
----
-
-## Acknowledgments
-
-Built with ❤️ using open-source technologies:
-- React, Vite, Express.js, Node.js, and many others
-
-For iOS builds (macOS only):
-- **Xcode 15.0+**
-- **CocoaPods**
-
-## Building the Application
-
-### Android
-
-#### Debug Build
 ```bash
-./gradlew :androidApp:assembleDebug
+npm run dev
 ```
 
-Output: `androidApp/build/outputs/apk/debug/androidApp-debug.apk`
+Backend from the repo root:
 
-#### Release Build
 ```bash
-./gradlew :androidApp:assembleRelease
+npm run dev --prefix server
 ```
 
-Output: `androidApp/build/outputs/apk/release/androidApp-release.apk`
+Default local URLs:
 
-#### Install to Device/Emulator
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:4000`
+
+## Commands
+
+### Root
+
 ```bash
-./gradlew :androidApp:installDebug
+npm run dev
+npm run build
+npm run build:budget
+npm run analyze
+npm run lint
+npm test
+npm run provision
+npm run provision:check
+npm run smoke:prod
 ```
 
-### iOS (macOS only)
+### Web
 
-#### Build Framework
 ```bash
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+npm run dev
+npm run build
+npm run analyze
+npm run lint
 ```
 
-For physical devices:
+### Server
+
 ```bash
-./gradlew :composeApp:linkReleaseFrameworkIosArm64
+npm run dev
+npm test
 ```
 
-## Technology Stack
+## Environment Variables
 
-- **Kotlin 2.1.20**: Programming language for all platforms
-- **Compose Multiplatform 1.8.1**: Cross-platform UI framework
-- **Material 3**: Modern design system
-- **Kotlin Native**: Native compilation for iOS
-- **Android Gradle Plugin 8.5.2**: Build system
+### Frontend (`web/.env.local`)
 
-## Key Features
-
-- **Single Codebase**: Shared UI and business logic across platforms
-- **Native Performance**: Compiled to machine code (no JavaScript bridge)
-- **Modern UI**: Compose Multiplatform with Material 3
-- **Type Safety**: Full Kotlin type system across all code
-
-## Application Features
-
-The Money Generator app provides:
-
-- **Job Boards**: Categorized job listings (Local Missions, Digital Services, Shift-Based Ops)
-- **Smart Workflows**: Delivery Mode, Freelance Mode, Support Mode
-- **Financial Stack**: Liquidity, Benefits, Expense Intelligence
-- **Integration Hub**: Unified API Gateway and White-Label Marketplace
-- **Master Key Architecture**: Secure routing and billing
-- **Monetization Engine**: Subscriptions, cost-plus billing, commissions
-- **Compliance**: Enterprise-grade security and audit trails
-- **Roadmap**: MVP → Scale → Enterprise phases
-
-## Development
-
-### Clean Build
 ```bash
-./gradlew clean
+VITE_API_URL=http://localhost:4000
+VITE_V2_ENABLED=true
 ```
 
-### Build All Modules
+### Backend (`server/.env`)
+
+Copy `server/.env.example` to `server/.env` and populate the real values.
+
+Core variables:
+
 ```bash
-./gradlew build
+PORT=4000
+BACKEND_PORT=4000
+FRONTEND_URL=http://localhost:3000
+JWT_SECRET=...
+DATABASE_URL=postgresql://...
+AUTH_ADMIN_TOKEN=...
+AUTH_USER_TOKEN=...
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+STRIPE_CONNECT_WEBHOOK_SECRET=...
+STRIPE_SUBSCRIPTION_WEBHOOK_SECRET=...
+PAYPAL_WEBHOOK_SECRET=...
+PLAID_WEBHOOK_SECRET=...
 ```
 
-### List Available Tasks
-```bash
-./gradlew tasks
-```
+## Verification
 
-## Migration Notes
+Release-facing checks for v1.3.1:
 
-The TypeScript/React UI has been fully ported to Kotlin Compose:
+- `npm test` passes the backend Jest suite.
+- `npm run build:budget` is the frontend release gate.
+- Root, frontend, and backend dependency audits are clean.
+- Release docs align with the shipped code and current deployment topology.
 
-- **React Components** → **@Composable functions**
-- **StyleSheet** → **Modifier chains**
-- **useState/useEffect** → **remember/LaunchedEffect**
-- **Props** → **Function parameters**
-- **Type definitions** → **data classes**
+Production smoke tooling:
 
-All business logic, data models, and UI styling have been preserved in the conversion.
+- `npm run smoke:prod` runs the lightweight API smoke checks.
+- `scripts/prod-verify.sh` runs the full 10-step production verification flow on Unix-like shells.
+- `do-verify.bat` runs the same production verification flow on Windows.
+
+See `RELEASE_CHECKLIST.md`, `POST_DEPLOYMENT_CHECKLIST.md`, `PRODUCTION_OPERATIONS_RUNBOOK.md`, and `TESTING_GUIDE.md` for the full release and smoke flow.
+
+## Production Endpoints
+
+- Web: `https://moneygenerator.app`
+- Production API: `https://api.moneygenerator.app`
+- Preview API: `https://staging-api.moneygenerator.app`
+
+## Performance Notes
+
+- Entry CSS is approximately 30.64 kB in the validated strict budget build.
+- SVG report previews replaced Recharts in v1.3.1.
+- The Jobs map uses MapLibre only when the map view is selected and the map container nears the viewport.
+
+## Key Routes
+
+- `/login`, `/register`
+- `/`
+- `/jobs`
+- `/reports`
+- `/settings`
+- `/connect/dashboard`
+- `/storefront/:accountId`
 
 ## Troubleshooting
 
-### Gradle Sync Failures
+### Backend not reachable
+
+- Check `http://localhost:4000/health`.
+- Verify `VITE_API_URL` points to the backend.
+- Confirm the backend process is running.
+
+### Port already in use
+
 ```bash
-./gradlew --stop
-rm -rf ~/.gradle/caches/
-./gradlew build --refresh-dependencies
+netstat -ano | findstr :3000
+netstat -ano | findstr :4000
 ```
 
-### Android SDK Issues
-Ensure correct SDK versions in Android Studio:
-- SDK Platform 36
-- Build Tools 36.0.0
+### Clean reinstall
 
-### Network/Repository Issues
-If Maven repositories are unavailable:
 ```bash
-./gradlew build --offline
+rm -rf node_modules web/node_modules server/node_modules
+npm install
+npm install --prefix web
+npm install --prefix server
 ```
 
-## Additional Documentation
+## Version Notes
 
-See [README_KOTLIN_NATIVE.md](README_KOTLIN_NATIVE.md) for detailed Kotlin Native build instructions.
+### v1.3.1
 
-See [README_REACT_NATIVE.md.backup](README_REACT_NATIVE.md.backup) for the original React Native documentation (deprecated).
+- Removed Recharts in favor of custom SVG previews.
+- Removed the unused `vite-plugin-pwa` dependency chain.
+- Tightened bundle-budget enforcement.
+- Reduced always-on CSS and removed stale frontend structure.
 
-See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) for the original React Native build documentation (deprecated).
-
-## License
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
-
-## Backend (Express + integrations)
-
-We ship a minimal backend under `/server` to keep secrets off-device and centralize integrations.
-
-### Setup
-
-1. Copy `.env.example` to `.env` and fill in PayPal/Plaid secrets (only on the backend).
-2. Install server deps: `npm install --prefix server`.
-3. Start the API: `npm run dev --prefix server` (default port 4000).
-
-### Local webhook testing
-
-- Use a tunneling tool (e.g., ngrok) pointing at `localhost:4000`. Configure the public URL in PayPal/Plaid console.
-- Webhooks are signed (HMAC-SHA256) and idempotent. Duplicate `id`s will return `status: duplicate`.
-- Correlation IDs and structured logs are emitted for every request; metrics counters available at `/health`.
-
-### Tests
-
-- Unit tests for webhook signature verification + idempotency: `npm test --prefix server`.
-
-### PayPal webhook setup
-
-- Point PayPal webhooks to `/webhooks/paypal`.
-- Configure `PAYPAL_WEBHOOK_SECRET` in `.env` to match your PayPal app.
-- Subscription flows use backend-only endpoints:
-  - `POST /billing/paypal/subscription/create` -> returns `approvalUrl` + `providerSubscriptionId`.
-  - After user approval, call `POST /billing/paypal/subscription/confirm` to activate and grant entitlements.
-  - `POST /billing/paypal/subscription/cancel` to terminate.
-- Webhooks are idempotent and state transitions are validated server-side; outbound CRM webhooks are queued with retries.
-See LICENSE file for details.
+See `CHANGELOG.md` for full release history.

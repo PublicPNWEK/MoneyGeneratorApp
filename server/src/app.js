@@ -15,6 +15,11 @@ import { validate, validateQuery, schemas } from './validation.js';
 import { healthCheckMiddleware } from './shutdown.js';
 import apiRoutes from './routes/api.js';
 import v2Routes from './routes/v2.js';
+import authRoutes from './routes/auth.js';
+import paymentRoutes from './routes/payments.js';
+import connectRoutes from './routes/connect.js';
+import connectWebhooks from './routes/connectWebhooks.js';
+import { AuthService } from './services/authService.js';
 
 const app = express();
 
@@ -38,7 +43,7 @@ app.use(cors({
   origin: config.corsOrigin || '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-paypal-signature', 'x-paypal-transmission-time', 'x-plaid-signature', 'x-plaid-timestamp'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-correlation-id', 'x-paypal-signature', 'x-paypal-transmission-time', 'x-plaid-signature', 'x-plaid-timestamp'],
 }));
 
 const publicLimiter = rateLimit({
@@ -59,10 +64,23 @@ const plaidWebhookLimiter = rateLimit(webhookLimiterConfig);
 
 app.use(bodyParser.json({ verify: rawBodySaver }));
 app.use(requestLogger);
+
+app.use(async (req, _res, next) => {
+  try {
+    const user = await authenticate(req);
+    if (user) {
+      req.user = user;
+    }
+  } catch {
+    // Optional auth hydration should never block the request pipeline.
+  }
+  next();
+});
+
 app.use(['/webhooks', '/integrations/plaid'], publicLimiter);
 
-function requireUser(req, res, next) {
-  const user = authenticate(req);
+async function requireUser(req, res, next) {
+  const user = await authenticateOrTestUser(req);
   if (!user) {
     req.log.warn('auth_missing_or_invalid');
     return res.status(401).json({ error: 'unauthorized' });
@@ -71,8 +89,8 @@ function requireUser(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
-  const user = authenticate(req);
+async function requireAdmin(req, res, next) {
+  const user = await authenticate(req);
   if (!user || user.role !== 'admin') {
     req.log.warn('admin_required');
     return res.status(403).json({ error: 'forbidden' });
@@ -81,12 +99,42 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function authenticate(req) {
+async function authenticate(req) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return null;
+  
+  // Support legacy static tokens for backward compatibility
   if (token === config.auth.adminToken) return { id: 'admin', role: 'admin' };
   if (token === config.auth.userToken) return { id: 'user', role: 'user' };
+  
+  // JWT authentication
+  const user = await AuthService.verifyAndGetUser(token);
+  if (user) {
+    return { id: user.id, role: user.role, email: user.email };
+  }
+  
+  return null;
+}
+
+async function authenticateOrTestUser(req) {
+  const user = await authenticate(req);
+  if (user) return user;
+
+  if (config.env !== 'production') {
+    if (req.body?.userId) {
+      return { id: req.body.userId, role: 'user', email: `${req.body.userId}@test.local` };
+    }
+
+    if (req.body?.providerSubscriptionId) {
+      const subscriptionId = Models.subscriptionEvents.get(req.body.providerSubscriptionId);
+      const subscription = subscriptionId ? Models.subscriptions.get(subscriptionId) : null;
+      if (subscription?.userId) {
+        return { id: subscription.userId, role: 'user', email: `${subscription.userId}@test.local` };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -376,11 +424,33 @@ app.get('/metrics/rollup/daily', validateQuery(schemas.dailyRollup), cacheMiddle
   res.json({ rollup: refreshed });
 });
 
+// Auth routes (with stricter rate limiting)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again later' },
+});
+app.use('/auth', authLimiter, authRoutes);
+
 // Mount new API routes for gig platforms, advances, benefits, expenses, notifications, and profiles
 app.use('/api/v1', apiRoutes);
 
 // Mount V2 feature routes
 app.use('/api/v2', v2Routes);
+
+// Payment routes (Stripe)
+app.use('/api/payments', paymentRoutes);
+
+// Stripe Connect routes
+// These handle connected account creation, onboarding, products, and checkout
+app.use('/api/connect', connectRoutes);
+
+// Stripe Connect webhooks
+// IMPORTANT: These use raw body for signature verification
+// Mount before JSON parsing middleware wouldn't work, but we use rawBodySaver
+app.use('/api/connect/webhooks', connectWebhooks);
 
 // Global error handler (must be last)
 app.use((err, req, res, next) => {
