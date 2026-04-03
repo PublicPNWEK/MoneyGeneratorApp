@@ -36,6 +36,13 @@ NODE_ENV = "development"
 VITE_API_URL = "https://staging-api.moneygenerator.app"
 VITE_V2_ENABLED = "true"
 
+# OneCommerce MCP endpoint → Netlify Function
+[[redirects]]
+from = "/mcp"
+to = "/.netlify/functions/mcp"
+status = 200
+force = true
+
 # API proxy for backend services - Production
 [[redirects]]
 from = "/api/v2/*"
@@ -157,7 +164,7 @@ X-XSS-Protection = "1; mode=block"
 Referrer-Policy = "strict-origin-when-cross-origin"
 Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com https://cdn.segment.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.moneygenerator.app https://*.plaid.com https://*.segment.com; frame-src https://cdn.plaid.com; upgrade-insecure-requests"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com https://cdn.segment.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.moneygenerator.app https://*.plaid.com https://*.segment.com wss:; frame-src https://cdn.plaid.com; upgrade-insecure-requests"
 
 # API headers
 [[headers]]
